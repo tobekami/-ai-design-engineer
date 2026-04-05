@@ -1,0 +1,2483 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.gitignore
+AGENTS.md
+CLAUDE.md
+components.json
+eslint.config.mjs
+next.config.ts
+package.json
+postcss.config.mjs
+public/file.svg
+public/globe.svg
+public/next.svg
+public/vercel.svg
+public/window.svg
+README.md
+src/app/favicon.ico
+src/app/globals.css
+src/app/layout.tsx
+src/app/page.tsx
+src/components/preview/PreviewCanvas.tsx
+src/components/preview/ThemeProvider.tsx
+src/components/studio/ColorInput.tsx
+src/components/studio/HarmonyPicker.tsx
+src/components/studio/TokenDisplay.tsx
+src/components/ui/badge.tsx
+src/components/ui/button.tsx
+src/components/ui/card.tsx
+src/components/ui/input.tsx
+src/components/ui/label.tsx
+src/components/ui/select.tsx
+src/components/ui/separator.tsx
+src/components/ui/tabs.tsx
+src/lib/harmony/engine.ts
+src/lib/harmony/oklch.ts
+src/lib/harmony/tokens.ts
+src/lib/harmony/wcag.ts
+src/lib/schema/theme-config.schema.ts
+src/lib/store/theme.store.ts
+src/lib/utils.ts
+tsconfig.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="src/components/preview/PreviewCanvas.tsx">
+"use client";
+
+import { useThemeStore } from "@/lib/store/theme.store";
+import { Button } from "@/components/ui/button";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
+import {
+    Bell,
+    CreditCard,
+    LayoutDashboard,
+    Moon,
+    Settings,
+    Sun,
+    User,
+    TrendingUp,
+    ShoppingCart,
+    Users,
+} from "lucide-react";
+
+function StatCard({
+    title,
+    value,
+    change,
+    icon: Icon,
+}: {
+    title: string;
+    value: string;
+    change: string;
+    icon: React.ElementType;
+}) {
+    return (
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                    {title}
+                </CardTitle>
+                <Icon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold">{value}</div>
+                <p className="text-xs text-muted-foreground mt-1">{change}</p>
+            </CardContent>
+        </Card>
+    );
+}
+
+function DashboardPreview() {
+    return (
+        <div className="space-y-4">
+            {/* Stats row */}
+            <div className="grid grid-cols-3 gap-3">
+                <StatCard
+                    title="Total Revenue"
+                    value="$45,231"
+                    change="+20.1% from last month"
+                    icon={TrendingUp}
+                />
+                <StatCard
+                    title="Orders"
+                    value="2,350"
+                    change="+15.3% from last month"
+                    icon={ShoppingCart}
+                />
+                <StatCard
+                    title="Active Users"
+                    value="12,234"
+                    change="+8.2% from last month"
+                    icon={Users}
+                />
+            </div>
+
+            {/* Main content */}
+            <div className="grid grid-cols-3 gap-3">
+                {/* Recent activity */}
+                <Card className="col-span-2">
+                    <CardHeader>
+                        <CardTitle>Recent Activity</CardTitle>
+                        <CardDescription>
+                            Your team has 6 active projects this week
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        {[
+                            { name: "Sarah Chen", action: "Deployed to production", time: "2m ago", badge: "success" },
+                            { name: "Marcus Reid", action: "Opened pull request #142", time: "18m ago", badge: "default" },
+                            { name: "Priya Nair", action: "Flagged a critical bug", time: "1h ago", badge: "destructive" },
+                            { name: "Tom Okafor", action: "Merged branch feature/auth", time: "3h ago", badge: "secondary" },
+                        ].map((item) => (
+                            <div key={item.name} className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-semibold">
+                                        {item.name.split(" ").map((n) => n[0]).join("")}
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium">{item.name}</p>
+                                        <p className="text-xs text-muted-foreground">{item.action}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Badge
+                                        variant={
+                                            item.badge === "destructive"
+                                                ? "destructive"
+                                                : item.badge === "secondary"
+                                                    ? "secondary"
+                                                    : "default"
+                                        }
+                                        className="text-xs"
+                                    >
+                                        {item.badge === "success" ? "Deployed" :
+                                            item.badge === "destructive" ? "Bug" :
+                                                item.badge === "secondary" ? "Merged" : "PR"}
+                                    </Badge>
+                                    <span className="text-xs text-muted-foreground">{item.time}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </CardContent>
+                </Card>
+
+                {/* Quick actions */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Quick Actions</CardTitle>
+                        <CardDescription>Common tasks</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                        <Button className="w-full justify-start gap-2" size="sm">
+                            <LayoutDashboard className="h-4 w-4" />
+                            New Project
+                        </Button>
+                        <Button variant="outline" className="w-full justify-start gap-2" size="sm">
+                            <User className="h-4 w-4" />
+                            Invite Member
+                        </Button>
+                        <Button variant="outline" className="w-full justify-start gap-2" size="sm">
+                            <Bell className="h-4 w-4" />
+                            Notifications
+                        </Button>
+                        <Button variant="secondary" className="w-full justify-start gap-2" size="sm">
+                            <Settings className="h-4 w-4" />
+                            Settings
+                        </Button>
+                    </CardContent>
+                    <CardFooter>
+                        <p className="text-xs text-muted-foreground">
+                            3 pending notifications
+                        </p>
+                    </CardFooter>
+                </Card>
+            </div>
+        </div>
+    );
+}
+
+function FormsPreview() {
+    return (
+        <div className="grid grid-cols-2 gap-4">
+            {/* Sign in form */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Sign In</CardTitle>
+                    <CardDescription>Enter your credentials to continue</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="email">Email</Label>
+                        <Input id="email" type="email" placeholder="you@example.com" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="password">Password</Label>
+                        <Input id="password" type="password" placeholder="••••••••" />
+                    </div>
+                </CardContent>
+                <CardFooter className="flex flex-col gap-2">
+                    <Button className="w-full">Sign In</Button>
+                    <Button variant="ghost" className="w-full text-sm">
+                        Forgot password?
+                    </Button>
+                </CardFooter>
+            </Card>
+
+            {/* Profile form */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Profile</CardTitle>
+                    <CardDescription>Update your public profile</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                        <Label>Display Name</Label>
+                        <Input placeholder="Your name" defaultValue="Alex Johnson" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Username</Label>
+                        <Input placeholder="@username" defaultValue="@alexj" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Role</Label>
+                        <div className="flex gap-2">
+                            <Badge>Admin</Badge>
+                            <Badge variant="secondary">Designer</Badge>
+                            <Badge variant="outline">Pro</Badge>
+                        </div>
+                    </div>
+                </CardContent>
+                <CardFooter className="flex gap-2">
+                    <Button size="sm">Save Changes</Button>
+                    <Button size="sm" variant="outline">Cancel</Button>
+                </CardFooter>
+            </Card>
+
+            {/* Billing card */}
+            <Card className="col-span-2">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <CreditCard className="h-5 w-5" />
+                        Billing
+                    </CardTitle>
+                    <CardDescription>Manage your subscription and payment</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="font-medium">Pro Plan</p>
+                            <p className="text-sm text-muted-foreground">$29/month · Renews Dec 1, 2025</p>
+                        </div>
+                        <div className="flex gap-2">
+                            <Button variant="outline" size="sm">Change Plan</Button>
+                            <Button variant="destructive" size="sm">Cancel</Button>
+                        </div>
+                    </div>
+                    <Separator className="my-4" />
+                    <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Payment method</span>
+                        <span className="font-mono">•••• •••• •••• 4242</span>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
+
+export function PreviewCanvas() {
+    const isDark = useThemeStore((s) => s.isDark);
+    const toggleDark = useThemeStore((s) => s.toggleDark);
+    const primaryHex = useThemeStore((s) => s.current.primaryHex);
+    const harmonyType = useThemeStore((s) => s.current.harmonyType);
+
+    return (
+        <div className="flex h-full flex-col">
+            {/* Preview toolbar */}
+            <div className="flex items-center justify-between border-b border-border px-4 py-2">
+                <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                        Preview
+                    </span>
+                    <Badge variant="outline" className="font-mono text-xs">
+                        {primaryHex}
+                    </Badge>
+                    <Badge variant="secondary" className="text-xs">
+                        {harmonyType}
+                    </Badge>
+                </div>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={toggleDark}
+                    title="Toggle dark mode"
+                >
+                    {isDark ? (
+                        <Sun className="h-4 w-4" />
+                    ) : (
+                        <Moon className="h-4 w-4" />
+                    )}
+                </Button>
+            </div>
+
+            {/* Canvas */}
+            <div className="flex-1 overflow-auto p-4">
+                <Tabs defaultValue="dashboard" className="flex flex-col w-full">
+                    <TabsList className="mb-4 self-start">
+                        <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+                        <TabsTrigger value="forms">Forms & Cards</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="dashboard">
+                        <DashboardPreview />
+                    </TabsContent>
+                    <TabsContent value="forms">
+                        <FormsPreview />
+                    </TabsContent>
+                </Tabs>
+            </div>
+        </div>
+    );
+}
+</file>
+
+<file path="src/components/preview/ThemeProvider.tsx">
+"use client";
+
+import { useEffect } from "react";
+import { useThemeStore } from "@/lib/store/theme.store";
+import type { ShadcnTokenSet } from "@/lib/schema/theme-config.schema";
+
+function injectTokens(tokens: ShadcnTokenSet, isDark: boolean) {
+    const root = document.documentElement;
+
+    if (!isDark) {
+        root.classList.remove("dark");
+        root.style.setProperty("--background", tokens.background);
+        root.style.setProperty("--foreground", tokens.foreground);
+        root.style.setProperty("--card", tokens.card);
+        root.style.setProperty("--card-foreground", tokens.cardForeground);
+        root.style.setProperty("--popover", tokens.popover);
+        root.style.setProperty("--popover-foreground", tokens.popoverForeground);
+        root.style.setProperty("--primary", tokens.primary);
+        root.style.setProperty("--primary-foreground", tokens.primaryForeground);
+        root.style.setProperty("--secondary", tokens.secondary);
+        root.style.setProperty("--secondary-foreground", tokens.secondaryForeground);
+        root.style.setProperty("--muted", tokens.muted);
+        root.style.setProperty("--muted-foreground", tokens.mutedForeground);
+        root.style.setProperty("--accent", tokens.accent);
+        root.style.setProperty("--accent-foreground", tokens.accentForeground);
+        root.style.setProperty("--destructive", tokens.destructive);
+        root.style.setProperty("--destructive-foreground", tokens.destructiveForeground);
+        root.style.setProperty("--border", tokens.border);
+        root.style.setProperty("--input", tokens.input);
+        root.style.setProperty("--ring", tokens.ring);
+        root.style.setProperty("--radius", tokens.radius);
+    } else {
+        root.classList.add("dark");
+        root.style.setProperty("--background", tokens.darkBackground);
+        root.style.setProperty("--foreground", tokens.darkForeground);
+        root.style.setProperty("--card", tokens.darkCard);
+        root.style.setProperty("--card-foreground", tokens.darkCardForeground);
+        root.style.setProperty("--popover", tokens.darkPopover);
+        root.style.setProperty("--popover-foreground", tokens.darkPopoverForeground);
+        root.style.setProperty("--primary", tokens.darkPrimary);
+        root.style.setProperty("--primary-foreground", tokens.darkPrimaryForeground);
+        root.style.setProperty("--secondary", tokens.darkSecondary);
+        root.style.setProperty("--secondary-foreground", tokens.darkSecondaryForeground);
+        root.style.setProperty("--muted", tokens.darkMuted);
+        root.style.setProperty("--muted-foreground", tokens.darkMutedForeground);
+        root.style.setProperty("--accent", tokens.darkAccent);
+        root.style.setProperty("--accent-foreground", tokens.darkAccentForeground);
+        root.style.setProperty("--destructive", tokens.darkDestructive);
+        root.style.setProperty("--destructive-foreground", tokens.darkDestructiveForeground);
+        root.style.setProperty("--border", tokens.darkBorder);
+        root.style.setProperty("--input", tokens.darkInput);
+        root.style.setProperty("--ring", tokens.darkRing);
+        root.style.setProperty("--radius", tokens.radius);
+    }
+}
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+    const tokens = useThemeStore((s) => s.current.tokens);
+    const isDark = useThemeStore((s) => s.isDark);
+
+    useEffect(() => {
+        injectTokens(tokens, isDark);
+    }, [tokens, isDark]);
+
+    return <>{children}</>;
+}
+</file>
+
+<file path="src/components/studio/ColorInput.tsx">
+"use client";
+
+import { useState } from "react";
+import { useThemeStore } from "@/lib/store/theme.store";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Lock, Unlock, Shuffle } from "lucide-react";
+
+export function ColorInput() {
+    const primaryHex = useThemeStore((s) => s.current.primaryHex);
+    const colorLocked = useThemeStore((s) => s.current.locks.color);
+    const setPrimaryHex = useThemeStore((s) => s.setPrimaryHex);
+    const toggleLock = useThemeStore((s) => s.toggleLock);
+    const randomizeUnlocked = useThemeStore((s) => s.randomizeUnlocked);
+
+    const [inputValue, setInputValue] = useState(primaryHex);
+    const [error, setError] = useState(false);
+
+    const handleHexInput = (val: string) => {
+        setInputValue(val);
+        const clean = val.startsWith("#") ? val : `#${val}`;
+        if (/^#[0-9A-Fa-f]{6}$/.test(clean)) {
+            setError(false);
+            setPrimaryHex(clean);
+        } else {
+            setError(true);
+        }
+    };
+
+    const handleColorPicker = (val: string) => {
+        setInputValue(val);
+        setError(false);
+        setPrimaryHex(val);
+    };
+
+    return (
+        <div className="space-y-3">
+            <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    Primary Color
+                </Label>
+                <div className="flex items-center gap-1">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => toggleLock("color")}
+                        title={colorLocked ? "Unlock color" : "Lock color"}
+                    >
+                        {colorLocked ? (
+                            <Lock className="h-3.5 w-3.5 text-primary" />
+                        ) : (
+                            <Unlock className="h-3.5 w-3.5 text-muted-foreground" />
+                        )}
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={randomizeUnlocked}
+                        title="Randomize"
+                    >
+                        <Shuffle className="h-3.5 w-3.5 text-muted-foreground" />
+                    </Button>
+                </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+                {/* Native color picker */}
+                <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md border"
+                    style={{ borderColor: 'var(--border)' }}>
+                    <input
+                        type="color"
+                        value={primaryHex}
+                        onChange={(e) => handleColorPicker(e.target.value)}
+                        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                    />
+                    <div
+                        className="h-full w-full rounded-md"
+                        style={{ backgroundColor: primaryHex }}
+                    />
+                </div>
+
+                {/* Hex input */}
+                <Input
+                    value={inputValue}
+                    onChange={(e) => handleHexInput(e.target.value)}
+                    placeholder="#6d28d9"
+                    className={`font-mono text-sm ${error ? "border-destructive focus-visible:ring-destructive" : ""
+                        }`}
+                    maxLength={7}
+                />
+            </div>
+
+            {error && (
+                <p className="text-xs text-destructive">
+                    Enter a valid hex color (e.g. #6d28d9)
+                </p>
+            )}
+
+            {/* Color preview swatch row */}
+            <div className="flex gap-1.5 pt-1">
+                {[
+                    "#6d28d9", "#2563eb", "#059669",
+                    "#d97706", "#dc2626", "#db2777",
+                ].map((color) => (
+                    <button
+                        key={color}
+                        onClick={() => {
+                            setInputValue(color);
+                            setError(false);
+                            setPrimaryHex(color);
+                        }}
+                        className="h-6 w-6 rounded-full border-2 transition-transform hover:scale-110"
+                        style={{
+                            backgroundColor: color,
+                            borderColor: primaryHex === color ? "white" : "transparent",
+                            outline: primaryHex === color ? `2px solid ${color}` : "none",
+                        }}
+                        title={color}
+                    />
+                ))}
+            </div>
+        </div>
+    );
+}
+</file>
+
+<file path="src/components/studio/HarmonyPicker.tsx">
+"use client";
+
+import { useThemeStore } from "@/lib/store/theme.store";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Lock, Unlock } from "lucide-react";
+import type { HarmonyType } from "@/lib/schema/theme-config.schema";
+import { hexToOklch } from "@/lib/harmony/oklch";
+
+const HARMONIES: { value: HarmonyType; label: string; description: string }[] = [
+    { value: "analogous", label: "Analogous", description: "Calm, natural" },
+    { value: "complementary", label: "Complementary", description: "High contrast" },
+    { value: "split-comp", label: "Split-Comp", description: "Sophisticated" },
+    { value: "triadic", label: "Triadic", description: "Vibrant, rich" },
+    { value: "tetradic", label: "Tetradic", description: "Bold, complex" },
+    { value: "monochromatic", label: "Mono", description: "Refined, minimal" },
+];
+
+export function HarmonyPicker() {
+    const harmonyType = useThemeStore((s) => s.current.harmonyType);
+    const harmonyLocked = useThemeStore((s) => s.current.locks.harmony);
+    const setHarmonyType = useThemeStore((s) => s.setHarmonyType);
+    const toggleLock = useThemeStore((s) => s.toggleLock);
+
+    return (
+        <div className="space-y-3">
+            <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    Harmony Type
+                </Label>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => toggleLock("harmony")}
+                    title={harmonyLocked ? "Unlock harmony" : "Lock harmony"}
+                >
+                    {harmonyLocked ? (
+                        <Lock className="h-3.5 w-3.5 text-primary" />
+                    ) : (
+                        <Unlock className="h-3.5 w-3.5 text-muted-foreground" />
+                    )}
+                </Button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+                {HARMONIES.map((h) => (
+                    <button
+                        key={h.value}
+                        onClick={() => setHarmonyType(h.value)}
+                        className={`rounded-md border px-3 py-2 text-left transition-all hover:border-primary/50 ${harmonyType === h.value
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-card text-card-foreground"
+                            }`}
+                    >
+                        <div className="text-xs font-semibold">{h.label}</div>
+                        <div className="text-xs text-muted-foreground">{h.description}</div>
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+export function hexToOklchCss(hex: string): string {
+    const oklch = hexToOklch(hex);
+    return `oklch(${oklch.l.toFixed(4)} ${oklch.c.toFixed(4)} ${(oklch.h ?? 0).toFixed(2)})`;
+}
+</file>
+
+<file path="src/components/studio/TokenDisplay.tsx">
+"use client";
+
+import { useThemeStore } from "@/lib/store/theme.store";
+import { Label } from "@/components/ui/label";
+import type { ShadcnTokenSet } from "@/lib/schema/theme-config.schema";
+
+const LIGHT_TOKENS: { key: keyof ShadcnTokenSet; label: string }[] = [
+    { key: "background", label: "background" },
+    { key: "foreground", label: "foreground" },
+    { key: "primary", label: "primary" },
+    { key: "primaryForeground", label: "primary-foreground" },
+    { key: "secondary", label: "secondary" },
+    { key: "secondaryForeground", label: "secondary-foreground" },
+    { key: "muted", label: "muted" },
+    { key: "mutedForeground", label: "muted-foreground" },
+    { key: "accent", label: "accent" },
+    { key: "accentForeground", label: "accent-foreground" },
+    { key: "destructive", label: "destructive" },
+    { key: "card", label: "card" },
+    { key: "border", label: "border" },
+    { key: "input", label: "input" },
+    { key: "ring", label: "ring" },
+];
+
+function tokenValueToHex(value: string): string {
+    try {
+        // Handle oklch() format: oklch(0.9506 0.0... 123.45)
+        if (value.startsWith("oklch(")) {
+            const inner = value.replace("oklch(", "").replace(")", "");
+            const parts = inner.trim().split(/\s+/);
+            const l = parseFloat(parts[0]);
+            const c = parseFloat(parts[1]);
+            const h = parseFloat(parts[2]) || 0;
+            // Simple oklch to hex approximation via HSL
+            const hDeg = h;
+            const s = Math.min(c * 2.5, 1);
+            const lNorm = l;
+            const a = s * Math.min(lNorm, 1 - lNorm);
+            const f = (n: number) => {
+                const k = (n + hDeg / 30) % 12;
+                const color = lNorm - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+                return Math.round(255 * color).toString(16).padStart(2, "0");
+            };
+            return `#${f(0)}${f(8)}${f(4)}`;
+        }
+        return "#888888";
+    } catch {
+        return "#888888";
+    }
+}
+
+export function TokenDisplay() {
+    const tokens = useThemeStore((s) => s.current.tokens);
+    const isDark = useThemeStore((s) => s.isDark);
+
+    return (
+        <div className="space-y-3">
+            <Label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                Generated Tokens
+            </Label>
+
+            <div className="space-y-1 rounded-md border border-border bg-card p-2">
+                {LIGHT_TOKENS.map(({ key, label }) => {
+                    const value = tokens[key] as string;
+                    const darkKey = `dark${key.charAt(0).toUpperCase()}${key.slice(1)}` as keyof ShadcnTokenSet;
+                    const displayValue = isDark && tokens[darkKey]
+                        ? (tokens[darkKey] as string)
+                        : value;
+                    const hexApprox = tokenValueToHex(displayValue);
+
+                    return (
+                        <div
+                            key={key}
+                            className="flex items-center gap-2 rounded px-1.5 py-1 hover:bg-muted/50"
+                        >
+                            <div
+                                className="h-4 w-4 shrink-0 rounded-sm border border-border"
+                                style={{ backgroundColor: hexApprox }}
+                            />
+                            <span className="w-36 font-mono text-xs text-muted-foreground">
+                                --{label}
+                            </span>
+                            <span className="truncate font-mono text-xs text-foreground">
+                                {displayValue}
+                            </span>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+</file>
+
+<file path="src/components/ui/badge.tsx">
+import { mergeProps } from "@base-ui/react/merge-props"
+import { useRender } from "@base-ui/react/use-render"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+
+const badgeVariants = cva(
+  "group/badge inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-4xl border border-transparent px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3!",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
+        secondary:
+          "bg-secondary text-secondary-foreground [a]:hover:bg-secondary/80",
+        destructive:
+          "bg-destructive/10 text-destructive focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:focus-visible:ring-destructive/40 [a]:hover:bg-destructive/20",
+        outline:
+          "border-border text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground",
+        ghost:
+          "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+)
+
+function Badge({
+  className,
+  variant = "default",
+  render,
+  ...props
+}: useRender.ComponentProps<"span"> & VariantProps<typeof badgeVariants>) {
+  return useRender({
+    defaultTagName: "span",
+    props: mergeProps<"span">(
+      {
+        className: cn(badgeVariants({ variant }), className),
+      },
+      props
+    ),
+    render,
+    state: {
+      slot: "badge",
+      variant,
+    },
+  })
+}
+
+export { Badge, badgeVariants }
+</file>
+
+<file path="src/components/ui/card.tsx">
+import * as React from "react"
+
+import { cn } from "@/lib/utils"
+
+function Card({
+  className,
+  size = "default",
+  ...props
+}: React.ComponentProps<"div"> & { size?: "default" | "sm" }) {
+  return (
+    <div
+      data-slot="card"
+      data-size={size}
+      className={cn(
+        "group/card flex flex-col gap-4 overflow-hidden rounded-xl bg-card py-4 text-sm text-card-foreground ring-1 ring-foreground/10 has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-header"
+      className={cn(
+        "group/card-header @container/card-header grid auto-rows-min items-start gap-1 rounded-t-xl px-4 group-data-[size=sm]/card:px-3 has-data-[slot=card-action]:grid-cols-[1fr_auto] has-data-[slot=card-description]:grid-rows-[auto_auto] [.border-b]:pb-4 group-data-[size=sm]/card:[.border-b]:pb-3",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-title"
+      className={cn(
+        "font-heading text-base leading-snug font-medium group-data-[size=sm]/card:text-sm",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-description"
+      className={cn("text-sm text-muted-foreground", className)}
+      {...props}
+    />
+  )
+}
+
+function CardAction({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-action"
+      className={cn(
+        "col-start-2 row-span-2 row-start-1 self-start justify-self-end",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardContent({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-content"
+      className={cn("px-4 group-data-[size=sm]/card:px-3", className)}
+      {...props}
+    />
+  )
+}
+
+function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-footer"
+      className={cn(
+        "flex items-center rounded-b-xl border-t bg-muted/50 p-4 group-data-[size=sm]/card:p-3",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+export {
+  Card,
+  CardHeader,
+  CardFooter,
+  CardTitle,
+  CardAction,
+  CardDescription,
+  CardContent,
+}
+</file>
+
+<file path="src/components/ui/input.tsx">
+import * as React from "react"
+import { Input as InputPrimitive } from "@base-ui/react/input"
+
+import { cn } from "@/lib/utils"
+
+function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+  return (
+    <InputPrimitive
+      type={type}
+      data-slot="input"
+      className={cn(
+        "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none file:inline-flex file:h-6 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+export { Input }
+</file>
+
+<file path="src/components/ui/label.tsx">
+"use client"
+
+import * as React from "react"
+
+import { cn } from "@/lib/utils"
+
+function Label({ className, ...props }: React.ComponentProps<"label">) {
+  return (
+    <label
+      data-slot="label"
+      className={cn(
+        "flex items-center gap-2 text-sm leading-none font-medium select-none group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+export { Label }
+</file>
+
+<file path="src/components/ui/select.tsx">
+"use client"
+
+import * as React from "react"
+import { Select as SelectPrimitive } from "@base-ui/react/select"
+
+import { cn } from "@/lib/utils"
+import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
+
+const Select = SelectPrimitive.Root
+
+function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
+  return (
+    <SelectPrimitive.Group
+      data-slot="select-group"
+      className={cn("scroll-my-1 p-1", className)}
+      {...props}
+    />
+  )
+}
+
+function SelectValue({ className, ...props }: SelectPrimitive.Value.Props) {
+  return (
+    <SelectPrimitive.Value
+      data-slot="select-value"
+      className={cn("flex flex-1 text-left", className)}
+      {...props}
+    />
+  )
+}
+
+function SelectTrigger({
+  className,
+  size = "default",
+  children,
+  ...props
+}: SelectPrimitive.Trigger.Props & {
+  size?: "sm" | "default"
+}) {
+  return (
+    <SelectPrimitive.Trigger
+      data-slot="select-trigger"
+      data-size={size}
+      className={cn(
+        "flex w-fit items-center justify-between gap-1.5 rounded-lg border border-input bg-transparent py-2 pr-2 pl-2.5 text-sm whitespace-nowrap transition-colors outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-placeholder:text-muted-foreground data-[size=default]:h-8 data-[size=sm]:h-7 data-[size=sm]:rounded-[min(var(--radius-md),10px)] *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 dark:bg-input/30 dark:hover:bg-input/50 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        className
+      )}
+      {...props}
+    >
+      {children}
+      <SelectPrimitive.Icon
+        render={
+          <ChevronDownIcon className="pointer-events-none size-4 text-muted-foreground" />
+        }
+      />
+    </SelectPrimitive.Trigger>
+  )
+}
+
+function SelectContent({
+  className,
+  children,
+  side = "bottom",
+  sideOffset = 4,
+  align = "center",
+  alignOffset = 0,
+  alignItemWithTrigger = true,
+  ...props
+}: SelectPrimitive.Popup.Props &
+  Pick<
+    SelectPrimitive.Positioner.Props,
+    "align" | "alignOffset" | "side" | "sideOffset" | "alignItemWithTrigger"
+  >) {
+  return (
+    <SelectPrimitive.Portal>
+      <SelectPrimitive.Positioner
+        side={side}
+        sideOffset={sideOffset}
+        align={align}
+        alignOffset={alignOffset}
+        alignItemWithTrigger={alignItemWithTrigger}
+        className="isolate z-50"
+      >
+        <SelectPrimitive.Popup
+          data-slot="select-content"
+          data-align-trigger={alignItemWithTrigger}
+          className={cn("relative isolate z-50 max-h-(--available-height) w-(--anchor-width) min-w-36 origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95", className )}
+          {...props}
+        >
+          <SelectScrollUpButton />
+          <SelectPrimitive.List>{children}</SelectPrimitive.List>
+          <SelectScrollDownButton />
+        </SelectPrimitive.Popup>
+      </SelectPrimitive.Positioner>
+    </SelectPrimitive.Portal>
+  )
+}
+
+function SelectLabel({
+  className,
+  ...props
+}: SelectPrimitive.GroupLabel.Props) {
+  return (
+    <SelectPrimitive.GroupLabel
+      data-slot="select-label"
+      className={cn("px-1.5 py-1 text-xs text-muted-foreground", className)}
+      {...props}
+    />
+  )
+}
+
+function SelectItem({
+  className,
+  children,
+  ...props
+}: SelectPrimitive.Item.Props) {
+  return (
+    <SelectPrimitive.Item
+      data-slot="select-item"
+      className={cn(
+        "relative flex w-full cursor-default items-center gap-1.5 rounded-md py-1 pr-8 pl-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground not-data-[variant=destructive]:focus:**:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 *:[span]:last:flex *:[span]:last:items-center *:[span]:last:gap-2",
+        className
+      )}
+      {...props}
+    >
+      <SelectPrimitive.ItemText className="flex flex-1 shrink-0 gap-2 whitespace-nowrap">
+        {children}
+      </SelectPrimitive.ItemText>
+      <SelectPrimitive.ItemIndicator
+        render={
+          <span className="pointer-events-none absolute right-2 flex size-4 items-center justify-center" />
+        }
+      >
+        <CheckIcon className="pointer-events-none" />
+      </SelectPrimitive.ItemIndicator>
+    </SelectPrimitive.Item>
+  )
+}
+
+function SelectSeparator({
+  className,
+  ...props
+}: SelectPrimitive.Separator.Props) {
+  return (
+    <SelectPrimitive.Separator
+      data-slot="select-separator"
+      className={cn("pointer-events-none -mx-1 my-1 h-px bg-border", className)}
+      {...props}
+    />
+  )
+}
+
+function SelectScrollUpButton({
+  className,
+  ...props
+}: React.ComponentProps<typeof SelectPrimitive.ScrollUpArrow>) {
+  return (
+    <SelectPrimitive.ScrollUpArrow
+      data-slot="select-scroll-up-button"
+      className={cn(
+        "top-0 z-10 flex w-full cursor-default items-center justify-center bg-popover py-1 [&_svg:not([class*='size-'])]:size-4",
+        className
+      )}
+      {...props}
+    >
+      <ChevronUpIcon
+      />
+    </SelectPrimitive.ScrollUpArrow>
+  )
+}
+
+function SelectScrollDownButton({
+  className,
+  ...props
+}: React.ComponentProps<typeof SelectPrimitive.ScrollDownArrow>) {
+  return (
+    <SelectPrimitive.ScrollDownArrow
+      data-slot="select-scroll-down-button"
+      className={cn(
+        "bottom-0 z-10 flex w-full cursor-default items-center justify-center bg-popover py-1 [&_svg:not([class*='size-'])]:size-4",
+        className
+      )}
+      {...props}
+    >
+      <ChevronDownIcon
+      />
+    </SelectPrimitive.ScrollDownArrow>
+  )
+}
+
+export {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectScrollDownButton,
+  SelectScrollUpButton,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+}
+</file>
+
+<file path="src/components/ui/separator.tsx">
+"use client"
+
+import { Separator as SeparatorPrimitive } from "@base-ui/react/separator"
+
+import { cn } from "@/lib/utils"
+
+function Separator({
+  className,
+  orientation = "horizontal",
+  ...props
+}: SeparatorPrimitive.Props) {
+  return (
+    <SeparatorPrimitive
+      data-slot="separator"
+      orientation={orientation}
+      className={cn(
+        "shrink-0 bg-border data-horizontal:h-px data-horizontal:w-full data-vertical:w-px data-vertical:self-stretch",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+export { Separator }
+</file>
+
+<file path="src/components/ui/tabs.tsx">
+"use client"
+
+import { Tabs as TabsPrimitive } from "@base-ui/react/tabs"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+
+function Tabs({
+  className,
+  orientation = "horizontal",
+  ...props
+}: TabsPrimitive.Root.Props) {
+  return (
+    <TabsPrimitive.Root
+      data-slot="tabs"
+      data-orientation={orientation}
+      className={cn(
+        "group/tabs flex gap-2 data-horizontal:flex-col",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+const tabsListVariants = cva(
+  "group/tabs-list inline-flex w-fit items-center justify-center rounded-lg p-[3px] text-muted-foreground group-data-horizontal/tabs:h-8 group-data-vertical/tabs:h-fit group-data-vertical/tabs:flex-col data-[variant=line]:rounded-none",
+  {
+    variants: {
+      variant: {
+        default: "bg-muted",
+        line: "gap-1 bg-transparent",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+)
+
+function TabsList({
+  className,
+  variant = "default",
+  ...props
+}: TabsPrimitive.List.Props & VariantProps<typeof tabsListVariants>) {
+  return (
+    <TabsPrimitive.List
+      data-slot="tabs-list"
+      data-variant={variant}
+      className={cn(tabsListVariants({ variant }), className)}
+      {...props}
+    />
+  )
+}
+
+function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
+  return (
+    <TabsPrimitive.Tab
+      data-slot="tabs-trigger"
+      className={cn(
+        "relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 text-sm font-medium whitespace-nowrap text-foreground/60 transition-all group-data-vertical/tabs:w-full group-data-vertical/tabs:justify-start hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 has-data-[icon=inline-end]:pr-1 has-data-[icon=inline-start]:pl-1 aria-disabled:pointer-events-none aria-disabled:opacity-50 dark:text-muted-foreground dark:hover:text-foreground group-data-[variant=default]/tabs-list:data-active:shadow-sm group-data-[variant=line]/tabs-list:data-active:shadow-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-active:bg-transparent dark:group-data-[variant=line]/tabs-list:data-active:border-transparent dark:group-data-[variant=line]/tabs-list:data-active:bg-transparent",
+        "data-active:bg-background data-active:text-foreground dark:data-active:border-input dark:data-active:bg-input/30 dark:data-active:text-foreground",
+        "after:absolute after:bg-foreground after:opacity-0 after:transition-opacity group-data-horizontal/tabs:after:inset-x-0 group-data-horizontal/tabs:after:bottom-[-5px] group-data-horizontal/tabs:after:h-0.5 group-data-vertical/tabs:after:inset-y-0 group-data-vertical/tabs:after:-right-1 group-data-vertical/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-active:after:opacity-100",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function TabsContent({ className, ...props }: TabsPrimitive.Panel.Props) {
+  return (
+    <TabsPrimitive.Panel
+      data-slot="tabs-content"
+      className={cn("flex-1 text-sm outline-none", className)}
+      {...props}
+    />
+  )
+}
+
+export { Tabs, TabsList, TabsTrigger, TabsContent, tabsListVariants }
+</file>
+
+<file path="src/lib/harmony/engine.ts">
+import { hexToOklch, oklchToHex, shiftHue, shiftLightness, shiftChroma } from "./oklch";
+import type { OklchColor } from "./oklch";
+import type { HarmonyType } from "../schema/theme-config.schema";
+
+export interface HarmonyPalette {
+    primary: string;
+    secondary: string;
+    accent: string;
+    complement: string;
+    background: string;
+    surface: string;
+    muted: string;
+    destructive: string;
+}
+
+function clampChroma(color: OklchColor): OklchColor {
+    return { ...color, c: Math.min(color.c, 0.37) };
+}
+
+export function generateHarmony(
+    primaryHex: string,
+    harmonyType: HarmonyType
+): HarmonyPalette {
+    const primary = hexToOklch(primaryHex);
+
+    let secondary: OklchColor;
+    let accent: OklchColor;
+    let complement: OklchColor;
+
+    switch (harmonyType) {
+        case "analogous":
+            secondary = shiftHue(primary, 30);
+            accent = shiftHue(primary, -30);
+            complement = shiftHue(primary, 180);
+            break;
+
+        case "complementary":
+            secondary = shiftHue(primary, 180);
+            accent = shiftHue(primary, 90);
+            complement = shiftHue(primary, 180);
+            break;
+
+        case "split-comp":
+            secondary = shiftHue(primary, 150);
+            accent = shiftHue(primary, 210);
+            complement = shiftHue(primary, 180);
+            break;
+
+        case "triadic":
+            secondary = shiftHue(primary, 120);
+            accent = shiftHue(primary, 240);
+            complement = shiftHue(primary, 180);
+            break;
+
+        case "tetradic":
+            secondary = shiftHue(primary, 90);
+            accent = shiftHue(primary, 180);
+            complement = shiftHue(primary, 270);
+            break;
+
+        case "monochromatic":
+            secondary = shiftLightness(shiftChroma(primary, -0.05), 0.15);
+            accent = shiftLightness(shiftChroma(primary, 0.05), -0.1);
+            complement = shiftLightness(primary, -0.2);
+            break;
+
+        default:
+            secondary = shiftHue(primary, 30);
+            accent = shiftHue(primary, -30);
+            complement = shiftHue(primary, 180);
+    }
+
+    // Background: very low chroma, high lightness version of primary hue
+    const background = clampChroma(
+        shiftLightness(shiftChroma(primary, -primary.c + 0.02), 1 - primary.l - 0.05)
+    );
+
+    // Surface: slightly off-white with a hint of the primary hue
+    const surface = clampChroma({
+        ...primary,
+        l: 0.97,
+        c: 0.01,
+    });
+
+    // Muted: desaturated secondary
+    const muted = clampChroma(
+        shiftChroma(shiftLightness(secondary, 0.3 - secondary.l), -secondary.c + 0.03)
+    );
+
+    // Destructive: always a red-range hue
+    const destructive: OklchColor = {
+        l: 0.55,
+        c: 0.22,
+        h: 25,
+    };
+
+    return {
+        primary: oklchToHex(clampChroma(primary)),
+        secondary: oklchToHex(clampChroma(secondary)),
+        accent: oklchToHex(clampChroma(accent)),
+        complement: oklchToHex(clampChroma(complement)),
+        background: oklchToHex(background),
+        surface: oklchToHex(surface),
+        muted: oklchToHex(muted),
+        destructive: oklchToHex(destructive),
+    };
+}
+</file>
+
+<file path="src/lib/harmony/oklch.ts">
+import { converter, formatHex, parse } from "culori";
+
+const toOklch = converter("oklch");
+const toRgb = converter("rgb");
+
+export interface OklchColor {
+    l: number; // 0–1
+    c: number; // 0–0.4 approx
+    h: number; // 0–360
+}
+
+export function hexToOklch(hex: string): OklchColor {
+    const color = toOklch(hex);
+    if (!color) throw new Error(`Invalid hex color: ${hex}`);
+    return {
+        l: color.l ?? 0,
+        c: color.c ?? 0,
+        h: color.h ?? 0,
+    };
+}
+
+export function oklchToHex(oklch: OklchColor): string {
+    const hex = formatHex({ mode: "oklch", ...oklch });
+    return hex ?? "#000000";
+}
+
+export function oklchToCss(oklch: OklchColor): string {
+    return `oklch(${(oklch.l * 100).toFixed(1)}% ${oklch.c.toFixed(4)} ${(oklch.h ?? 0).toFixed(1)})`;
+}
+
+export function hexToHsl(hex: string): string {
+    const color = parse(hex);
+    if (!color) return "0 0% 0%";
+    const rgb = toRgb(color);
+    if (!rgb) return "0 0% 0%";
+
+    const r = (rgb.r ?? 0);
+    const g = (rgb.g ?? 0);
+    const b = (rgb.b ?? 0);
+
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    let h = 0, s = 0;
+    const l = (max + min) / 2;
+
+    if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        switch (max) {
+            case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+            case g: h = ((b - r) / d + 2) / 6; break;
+            case b: h = ((r - g) / d + 4) / 6; break;
+        }
+    }
+
+    return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+}
+
+export function shiftHue(oklch: OklchColor, degrees: number): OklchColor {
+    return {
+        ...oklch,
+        h: ((oklch.h ?? 0) + degrees + 360) % 360,
+    };
+}
+
+export function shiftLightness(oklch: OklchColor, amount: number): OklchColor {
+    return {
+        ...oklch,
+        l: Math.max(0, Math.min(1, oklch.l + amount)),
+    };
+}
+
+export function shiftChroma(oklch: OklchColor, amount: number): OklchColor {
+    return {
+        ...oklch,
+        c: Math.max(0, oklch.c + amount),
+    };
+}
+
+export function hexToOklchCss(hex: string): string {
+    const oklch = hexToOklch(hex);
+    return `oklch(${oklch.l.toFixed(4)} ${oklch.c.toFixed(4)} ${(oklch.h ?? 0).toFixed(2)})`;
+}
+</file>
+
+<file path="src/lib/harmony/tokens.ts">
+import { enforceMinContrast } from "./wcag";
+import { hexToOklch, oklchToHex, shiftLightness, shiftChroma, hexToOklchCss } from "./oklch";
+import type { HarmonyPalette } from "./engine";
+import type { ShadcnTokenSet } from "../schema/theme-config.schema";
+
+function deriveForeground(backgroundHex: string): string {
+    const oklch = hexToOklch(backgroundHex);
+    const fgOklch =
+        oklch.l > 0.5
+            ? { l: 0.15, c: oklch.c * 0.3, h: oklch.h }
+            : { l: 0.97, c: oklch.c * 0.1, h: oklch.h };
+    const fg = oklchToHex(fgOklch);
+    return enforceMinContrast(fg, backgroundHex, 4.5);
+}
+
+function deriveDarkBackground(hex: string): string {
+    const oklch = hexToOklch(hex);
+    return oklchToHex({ l: 0.1, c: Math.min(oklch.c * 0.3, 0.02), h: oklch.h });
+}
+
+export function paletteToShadcnTokens(
+    palette: HarmonyPalette,
+    radiusPx: number = 8
+): ShadcnTokenSet {
+    // ── Light mode ──────────────────────────────────────────────
+    const background = palette.background;
+    const foreground = deriveForeground(background);
+    const card = palette.surface;
+    const cardForeground = deriveForeground(card);
+    const popover = palette.surface;
+    const popoverForeground = deriveForeground(popover);
+    const primary = palette.primary;
+    const primaryForeground = enforceMinContrast(deriveForeground(primary), primary, 4.5);
+
+    const secondaryOklch = hexToOklch(palette.secondary);
+    const secondaryLight = oklchToHex(shiftLightness(shiftChroma(secondaryOklch, -secondaryOklch.c + 0.04), 0.85));
+    const secondary = secondaryLight;
+    const secondaryForeground = deriveForeground(secondary);
+
+    const mutedOklch = hexToOklch(palette.muted);
+    const mutedLight = oklchToHex({ ...mutedOklch, l: 0.94, c: 0.02 });
+    const muted = mutedLight;
+    const mutedForeground = enforceMinContrast(
+        oklchToHex({ ...mutedOklch, l: 0.45, c: 0.06 }), muted, 4.5
+    );
+
+    const accentOklch = hexToOklch(palette.accent);
+    const accentLight = oklchToHex(shiftLightness(shiftChroma(accentOklch, -accentOklch.c + 0.04), 0.88));
+    const accent = accentLight;
+    const accentForeground = deriveForeground(accent);
+
+    const destructive = palette.destructive;
+    const destructiveForeground = enforceMinContrast("#ffffff", destructive, 4.5);
+
+    const borderOklch = hexToOklch(background);
+    const border = oklchToHex({ ...borderOklch, l: borderOklch.l - 0.08, c: 0.02 });
+    const input = oklchToHex({ ...borderOklch, l: borderOklch.l - 0.05, c: 0.01 });
+    const ring = palette.primary;
+
+    // ── Dark mode ────────────────────────────────────────────────
+    const darkBg = deriveDarkBackground(palette.primary);
+    const darkBackground = darkBg;
+    const darkForeground = enforceMinContrast(
+        oklchToHex({ l: 0.95, c: 0.01, h: hexToOklch(palette.primary).h }), darkBg, 4.5
+    );
+
+    const darkCardOklch = hexToOklch(darkBg);
+    const darkCard = oklchToHex({ ...darkCardOklch, l: darkCardOklch.l + 0.05 });
+    const darkCardForeground = darkForeground;
+    const darkPopover = darkCard;
+    const darkPopoverForeground = darkForeground;
+
+    const primaryOklch = hexToOklch(palette.primary);
+    const darkPrimary = oklchToHex({
+        ...primaryOklch,
+        l: Math.min(primaryOklch.l + 0.1, 0.85),
+        c: Math.min(primaryOklch.c + 0.02, 0.35),
+    });
+    const darkPrimaryForeground = enforceMinContrast(darkBackground, darkPrimary, 4.5);
+
+    const darkSecondaryOklch = hexToOklch(darkBg);
+    const darkSecondary = oklchToHex({ ...darkSecondaryOklch, l: 0.2, c: 0.02 });
+    const darkSecondaryForeground = darkForeground;
+    const darkMuted = oklchToHex({ ...darkSecondaryOklch, l: 0.18, c: 0.015 });
+    const darkMutedForeground = enforceMinContrast(
+        oklchToHex({ l: 0.65, c: 0.03, h: primaryOklch.h }), darkMuted, 4.5
+    );
+
+    const darkAccentOklch = hexToOklch(palette.accent);
+    const darkAccent = oklchToHex({ ...darkAccentOklch, l: 0.22, c: Math.min(darkAccentOklch.c, 0.06) });
+    const darkAccentForeground = darkForeground;
+    const darkDestructive = oklchToHex({ l: 0.45, c: 0.22, h: 25 });
+    const darkDestructiveForeground = enforceMinContrast("#ffffff", darkDestructive, 4.5);
+
+    const darkBorderOklch = hexToOklch(darkBg);
+    const darkBorder = oklchToHex({ ...darkBorderOklch, l: darkBorderOklch.l + 0.12, c: 0.02 });
+    const darkInput = oklchToHex({ ...darkBorderOklch, l: darkBorderOklch.l + 0.08, c: 0.015 });
+    const darkRing = darkPrimary;
+
+    // Return oklch() CSS strings — matches base-nova variable format
+    return {
+        background: hexToOklchCss(background),
+        foreground: hexToOklchCss(foreground),
+        card: hexToOklchCss(card),
+        cardForeground: hexToOklchCss(cardForeground),
+        popover: hexToOklchCss(popover),
+        popoverForeground: hexToOklchCss(popoverForeground),
+        primary: hexToOklchCss(primary),
+        primaryForeground: hexToOklchCss(primaryForeground),
+        secondary: hexToOklchCss(secondary),
+        secondaryForeground: hexToOklchCss(secondaryForeground),
+        muted: hexToOklchCss(muted),
+        mutedForeground: hexToOklchCss(mutedForeground),
+        accent: hexToOklchCss(accent),
+        accentForeground: hexToOklchCss(accentForeground),
+        destructive: hexToOklchCss(destructive),
+        destructiveForeground: hexToOklchCss(destructiveForeground),
+        border: hexToOklchCss(border),
+        input: hexToOklchCss(input),
+        ring: hexToOklchCss(ring),
+        radius: `${radiusPx}px`,
+        darkBackground: hexToOklchCss(darkBackground),
+        darkForeground: hexToOklchCss(darkForeground),
+        darkCard: hexToOklchCss(darkCard),
+        darkCardForeground: hexToOklchCss(darkCardForeground),
+        darkPopover: hexToOklchCss(darkPopover),
+        darkPopoverForeground: hexToOklchCss(darkPopoverForeground),
+        darkPrimary: hexToOklchCss(darkPrimary),
+        darkPrimaryForeground: hexToOklchCss(darkPrimaryForeground),
+        darkSecondary: hexToOklchCss(darkSecondary),
+        darkSecondaryForeground: hexToOklchCss(darkSecondaryForeground),
+        darkMuted: hexToOklchCss(darkMuted),
+        darkMutedForeground: hexToOklchCss(darkMutedForeground),
+        darkAccent: hexToOklchCss(darkAccent),
+        darkAccentForeground: hexToOklchCss(darkAccentForeground),
+        darkDestructive: hexToOklchCss(darkDestructive),
+        darkDestructiveForeground: hexToOklchCss(darkDestructiveForeground),
+        darkBorder: hexToOklchCss(darkBorder),
+        darkInput: hexToOklchCss(darkInput),
+        darkRing: hexToOklchCss(darkRing),
+    };
+}
+</file>
+
+<file path="src/lib/harmony/wcag.ts">
+import { converter } from "culori";
+import { hexToOklch, oklchToHex, shiftLightness } from "./oklch";
+
+const toRgb = converter("rgb");
+
+function relativeLuminance(hex: string): number {
+    const rgb = toRgb(hex);
+    if (!rgb) return 0;
+
+    const linearize = (v: number) =>
+        v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+
+    const r = linearize(rgb.r ?? 0);
+    const g = linearize(rgb.g ?? 0);
+    const b = linearize(rgb.b ?? 0);
+
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+export function contrastRatio(hex1: string, hex2: string): number {
+    const l1 = relativeLuminance(hex1);
+    const l2 = relativeLuminance(hex2);
+    const lighter = Math.max(l1, l2);
+    const darker = Math.min(l1, l2);
+    return (lighter + 0.05) / (darker + 0.05);
+}
+
+export function passesWCAG(
+    fg: string,
+    bg: string,
+    level: "AA" | "AAA" = "AA"
+): boolean {
+    const ratio = contrastRatio(fg, bg);
+    return level === "AA" ? ratio >= 4.5 : ratio >= 7;
+}
+
+export function enforceMinContrast(
+    fg: string,
+    bg: string,
+    minRatio: number = 4.5
+): string {
+    if (contrastRatio(fg, bg) >= minRatio) return fg;
+
+    const bgLuminance = relativeLuminance(bg);
+    // Decide direction: push fg toward dark if bg is light, toward light if bg is dark
+    const direction = bgLuminance > 0.5 ? -1 : 1;
+
+    let oklch = hexToOklch(fg);
+    let adjusted = fg;
+
+    for (let i = 0; i < 20; i++) {
+        oklch = shiftLightness(oklch, direction * 0.05);
+        adjusted = oklchToHex(oklch);
+        if (contrastRatio(adjusted, bg) >= minRatio) break;
+    }
+
+    return adjusted;
+}
+</file>
+
+<file path="src/lib/schema/theme-config.schema.ts">
+import { z } from "zod";
+
+export const HarmonyTypeSchema = z.enum([
+    "analogous",
+    "complementary",
+    "split-comp",
+    "triadic",
+    "tetradic",
+    "monochromatic",
+]);
+
+export const ShadcnTokenSetSchema = z.object({
+    // Light mode
+    background: z.string(),
+    foreground: z.string(),
+    card: z.string(),
+    cardForeground: z.string(),
+    popover: z.string(),
+    popoverForeground: z.string(),
+    primary: z.string(),
+    primaryForeground: z.string(),
+    secondary: z.string(),
+    secondaryForeground: z.string(),
+    muted: z.string(),
+    mutedForeground: z.string(),
+    accent: z.string(),
+    accentForeground: z.string(),
+    destructive: z.string(),
+    destructiveForeground: z.string(),
+    border: z.string(),
+    input: z.string(),
+    ring: z.string(),
+    radius: z.string(),
+    // Dark mode
+    darkBackground: z.string(),
+    darkForeground: z.string(),
+    darkCard: z.string(),
+    darkCardForeground: z.string(),
+    darkPopover: z.string(),
+    darkPopoverForeground: z.string(),
+    darkPrimary: z.string(),
+    darkPrimaryForeground: z.string(),
+    darkSecondary: z.string(),
+    darkSecondaryForeground: z.string(),
+    darkMuted: z.string(),
+    darkMutedForeground: z.string(),
+    darkAccent: z.string(),
+    darkAccentForeground: z.string(),
+    darkDestructive: z.string(),
+    darkDestructiveForeground: z.string(),
+    darkBorder: z.string(),
+    darkInput: z.string(),
+    darkRing: z.string(),
+});
+
+export const LocksSchema = z.object({
+    color: z.boolean(),
+    harmony: z.boolean(),
+    ideology: z.boolean(),
+    fonts: z.boolean(),
+    radius: z.boolean(),
+});
+
+export const ThemeConfigSchema = z.object({
+    id: z.string(),
+    primaryHex: z.string().regex(/^#[0-9A-Fa-f]{6}$/),
+    harmonyType: HarmonyTypeSchema,
+    ideologyId: z.string(),
+    ideologyTension: z.number().min(0).max(1),
+    fontPairId: z.string(),
+    industryTag: z.string(),
+    radiusOverride: z.number().min(0).max(100).nullable(),
+    locks: LocksSchema,
+    tokens: ShadcnTokenSetSchema,
+    createdAt: z.string().datetime(),
+});
+
+export type HarmonyType = z.infer<typeof HarmonyTypeSchema>;
+export type ShadcnTokenSet = z.infer<typeof ShadcnTokenSetSchema>;
+export type Locks = z.infer<typeof LocksSchema>;
+export type ThemeConfig = z.infer<typeof ThemeConfigSchema>;
+</file>
+
+<file path="src/lib/store/theme.store.ts">
+import { create } from "zustand";
+import { immer } from "zustand/middleware/immer";
+import { nanoid } from "nanoid";
+import { generateHarmony } from "../harmony/engine";
+import { paletteToShadcnTokens } from "../harmony/tokens";
+import type { ThemeConfig, HarmonyType, ShadcnTokenSet } from "../schema/theme-config.schema";
+
+const HARMONY_TYPES: HarmonyType[] = [
+    "analogous",
+    "complementary",
+    "split-comp",
+    "triadic",
+    "tetradic",
+    "monochromatic",
+];
+
+function buildThemeConfig(
+    primaryHex: string,
+    harmonyType: HarmonyType,
+    radiusOverride: number | null = null
+): ThemeConfig {
+    const palette = generateHarmony(primaryHex, harmonyType);
+    const radiusPx = radiusOverride !== null ? radiusOverride : 8;
+    const tokens = paletteToShadcnTokens(palette, radiusPx);
+
+    return {
+        id: nanoid(),
+        primaryHex,
+        harmonyType,
+        ideologyId: "default",
+        ideologyTension: 0,
+        fontPairId: "default",
+        industryTag: "tech",
+        radiusOverride,
+        locks: {
+            color: false,
+            harmony: false,
+            ideology: false,
+            fonts: false,
+            radius: false,
+        },
+        tokens,
+        createdAt: new Date().toISOString(),
+    };
+}
+
+interface ThemeStore {
+    current: ThemeConfig;
+    isDark: boolean;
+    past: ThemeConfig[];
+    future: ThemeConfig[];
+
+    // Actions
+    setPrimaryHex: (hex: string) => void;
+    setHarmonyType: (type: HarmonyType) => void;
+    setRadiusOverride: (value: number | null) => void;
+    toggleDark: () => void;
+    toggleLock: (dimension: keyof ThemeConfig["locks"]) => void;
+    randomizeUnlocked: () => void;
+    undo: () => void;
+    redo: () => void;
+}
+
+const SEED_COLOR = "#6d28d9";
+const SEED_HARMONY: HarmonyType = "analogous";
+
+export const useThemeStore = create<ThemeStore>()(
+    immer((set, get) => ({
+        current: buildThemeConfig(SEED_COLOR, SEED_HARMONY),
+        isDark: false,
+        past: [],
+        future: [],
+
+        setPrimaryHex: (hex: string) => {
+            if (!/^#[0-9A-Fa-f]{6}$/.test(hex)) return;
+            set((state) => {
+                state.past.push(state.current);
+                if (state.past.length > 50) state.past.shift();
+                state.future = [];
+                state.current = buildThemeConfig(
+                    hex,
+                    state.current.harmonyType,
+                    state.current.radiusOverride
+                );
+            });
+        },
+
+        setHarmonyType: (type: HarmonyType) => {
+            set((state) => {
+                state.past.push(state.current);
+                if (state.past.length > 50) state.past.shift();
+                state.future = [];
+                state.current = buildThemeConfig(
+                    state.current.primaryHex,
+                    type,
+                    state.current.radiusOverride
+                );
+                state.current.harmonyType = type;
+            });
+        },
+
+        setRadiusOverride: (value: number | null) => {
+            set((state) => {
+                state.past.push(state.current);
+                if (state.past.length > 50) state.past.shift();
+                state.future = [];
+                state.current = buildThemeConfig(
+                    state.current.primaryHex,
+                    state.current.harmonyType,
+                    value
+                );
+                state.current.radiusOverride = value;
+            });
+        },
+
+        toggleDark: () => {
+            set((state) => {
+                state.isDark = !state.isDark;
+            });
+        },
+
+        toggleLock: (dimension) => {
+            set((state) => {
+                state.current.locks[dimension] = !state.current.locks[dimension];
+            });
+        },
+
+        randomizeUnlocked: () => {
+            set((state) => {
+                const { locks, primaryHex, harmonyType, radiusOverride } = state.current;
+
+                const newHex = locks.color
+                    ? primaryHex
+                    : "#" +
+                    Math.floor(Math.random() * 0xffffff)
+                        .toString(16)
+                        .padStart(6, "0");
+
+                const newHarmony = locks.harmony
+                    ? harmonyType
+                    : HARMONY_TYPES[Math.floor(Math.random() * HARMONY_TYPES.length)];
+
+                const newRadius = locks.radius
+                    ? radiusOverride
+                    : Math.floor(Math.random() * 20);
+
+                state.past.push(state.current);
+                if (state.past.length > 50) state.past.shift();
+                state.future = [];
+                state.current = buildThemeConfig(newHex, newHarmony, newRadius);
+                state.current.locks = locks; // preserve locks after randomize
+            });
+        },
+
+        undo: () => {
+            set((state) => {
+                if (state.past.length === 0) return;
+                state.future.unshift(state.current);
+                state.current = state.past.pop()!;
+            });
+        },
+
+        redo: () => {
+            set((state) => {
+                if (state.future.length === 0) return;
+                state.past.push(state.current);
+                state.current = state.future.shift()!;
+            });
+        },
+    }))
+);
+</file>
+
+<file path=".gitignore">
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+</file>
+
+<file path="AGENTS.md">
+<!-- BEGIN:nextjs-agent-rules -->
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+<!-- END:nextjs-agent-rules -->
+</file>
+
+<file path="CLAUDE.md">
+@AGENTS.md
+</file>
+
+<file path="components.json">
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "base-nova",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "src/app/globals.css",
+    "baseColor": "neutral",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "iconLibrary": "lucide",
+  "rtl": false,
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  },
+  "menuColor": "default",
+  "menuAccent": "subtle",
+  "registries": {}
+}
+</file>
+
+<file path="eslint.config.mjs">
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTs from "eslint-config-next/typescript";
+
+const eslintConfig = defineConfig([
+  ...nextVitals,
+  ...nextTs,
+  // Override default ignores of eslint-config-next.
+  globalIgnores([
+    // Default ignores of eslint-config-next:
+    ".next/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+  ]),
+]);
+
+export default eslintConfig;
+</file>
+
+<file path="next.config.ts">
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  /* config options here */
+};
+
+export default nextConfig;
+</file>
+
+<file path="postcss.config.mjs">
+const config = {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+};
+
+export default config;
+</file>
+
+<file path="public/file.svg">
+<svg fill="none" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M14.5 13.5V5.41a1 1 0 0 0-.3-.7L9.8.29A1 1 0 0 0 9.08 0H1.5v13.5A2.5 2.5 0 0 0 4 16h8a2.5 2.5 0 0 0 2.5-2.5m-1.5 0v-7H8v-5H3v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1M9.5 5V2.12L12.38 5zM5.13 5h-.62v1.25h2.12V5zm-.62 3h7.12v1.25H4.5zm.62 3h-.62v1.25h7.12V11z" clip-rule="evenodd" fill="#666" fill-rule="evenodd"/></svg>
+</file>
+
+<file path="public/globe.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><g clip-path="url(#a)"><path fill-rule="evenodd" clip-rule="evenodd" d="M10.27 14.1a6.5 6.5 0 0 0 3.67-3.45q-1.24.21-2.7.34-.31 1.83-.97 3.1M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m.48-1.52a7 7 0 0 1-.96 0H7.5a4 4 0 0 1-.84-1.32q-.38-.89-.63-2.08a40 40 0 0 0 3.92 0q-.25 1.2-.63 2.08a4 4 0 0 1-.84 1.31zm2.94-4.76q1.66-.15 2.95-.43a7 7 0 0 0 0-2.58q-1.3-.27-2.95-.43a18 18 0 0 1 0 3.44m-1.27-3.54a17 17 0 0 1 0 3.64 39 39 0 0 1-4.3 0 17 17 0 0 1 0-3.64 39 39 0 0 1 4.3 0m1.1-1.17q1.45.13 2.69.34a6.5 6.5 0 0 0-3.67-3.44q.65 1.26.98 3.1M8.48 1.5l.01.02q.41.37.84 1.31.38.89.63 2.08a40 40 0 0 0-3.92 0q.25-1.2.63-2.08a4 4 0 0 1 .85-1.32 7 7 0 0 1 .96 0m-2.75.4a6.5 6.5 0 0 0-3.67 3.44 29 29 0 0 1 2.7-.34q.31-1.83.97-3.1M4.58 6.28q-1.66.16-2.95.43a7 7 0 0 0 0 2.58q1.3.27 2.95.43a18 18 0 0 1 0-3.44m.17 4.71q-1.45-.12-2.69-.34a6.5 6.5 0 0 0 3.67 3.44q-.65-1.27-.98-3.1" fill="#666"/></g><defs><clipPath id="a"><path fill="#fff" d="M0 0h16v16H0z"/></clipPath></defs></svg>
+</file>
+
+<file path="public/next.svg">
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 394 80"><path fill="#000" d="M262 0h68.5v12.7h-27.2v66.6h-13.6V12.7H262V0ZM149 0v12.7H94v20.4h44.3v12.6H94v21h55v12.6H80.5V0h68.7zm34.3 0h-17.8l63.8 79.4h17.9l-32-39.7 32-39.6h-17.9l-23 28.6-23-28.6zm18.3 56.7-9-11-27.1 33.7h17.8l18.3-22.7z"/><path fill="#000" d="M81 79.3 17 0H0v79.3h13.6V17l50.2 62.3H81Zm252.6-.4c-1 0-1.8-.4-2.5-1s-1.1-1.6-1.1-2.6.3-1.8 1-2.5 1.6-1 2.6-1 1.8.3 2.5 1a3.4 3.4 0 0 1 .6 4.3 3.7 3.7 0 0 1-3 1.8zm23.2-33.5h6v23.3c0 2.1-.4 4-1.3 5.5a9.1 9.1 0 0 1-3.8 3.5c-1.6.8-3.5 1.3-5.7 1.3-2 0-3.7-.4-5.3-1s-2.8-1.8-3.7-3.2c-.9-1.3-1.4-3-1.4-5h6c.1.8.3 1.6.7 2.2s1 1.2 1.6 1.5c.7.4 1.5.5 2.4.5 1 0 1.8-.2 2.4-.6a4 4 0 0 0 1.6-1.8c.3-.8.5-1.8.5-3V45.5zm30.9 9.1a4.4 4.4 0 0 0-2-3.3 7.5 7.5 0 0 0-4.3-1.1c-1.3 0-2.4.2-3.3.5-.9.4-1.6 1-2 1.6a3.5 3.5 0 0 0-.3 4c.3.5.7.9 1.3 1.2l1.8 1 2 .5 3.2.8c1.3.3 2.5.7 3.7 1.2a13 13 0 0 1 3.2 1.8 8.1 8.1 0 0 1 3 6.5c0 2-.5 3.7-1.5 5.1a10 10 0 0 1-4.4 3.5c-1.8.8-4.1 1.2-6.8 1.2-2.6 0-4.9-.4-6.8-1.2-2-.8-3.4-2-4.5-3.5a10 10 0 0 1-1.7-5.6h6a5 5 0 0 0 3.5 4.6c1 .4 2.2.6 3.4.6 1.3 0 2.5-.2 3.5-.6 1-.4 1.8-1 2.4-1.7a4 4 0 0 0 .8-2.4c0-.9-.2-1.6-.7-2.2a11 11 0 0 0-2.1-1.4l-3.2-1-3.8-1c-2.8-.7-5-1.7-6.6-3.2a7.2 7.2 0 0 1-2.4-5.7 8 8 0 0 1 1.7-5 10 10 0 0 1 4.3-3.5c2-.8 4-1.2 6.4-1.2 2.3 0 4.4.4 6.2 1.2 1.8.8 3.2 2 4.3 3.4 1 1.4 1.5 3 1.5 5h-5.8z"/></svg>
+</file>
+
+<file path="public/vercel.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1155 1000"><path d="m577.3 0 577.4 1000H0z" fill="#fff"/></svg>
+</file>
+
+<file path="public/window.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" clip-rule="evenodd" d="M1.5 2.5h13v10a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1zM0 1h16v11.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 0 12.5zm3.75 4.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5M7 4.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0m1.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5" fill="#666"/></svg>
+</file>
+
+<file path="README.md">
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+
+## Getting Started
+
+First, run the development server:
+
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## Learn More
+
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+</file>
+
+<file path="src/app/layout.tsx">
+import type { Metadata } from "next";
+import { Geist } from "next/font/google";
+import "./globals.css";
+import { ThemeProvider } from "@/components/preview/ThemeProvider";
+
+const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
+
+export const metadata: Metadata = {
+  title: "AI Design Engineer",
+  description: "Generate complete design systems from a single color",
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body className={geist.variable}>
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
+    </html>
+  );
+}
+</file>
+
+<file path="src/app/page.tsx">
+"use client";
+
+import { ColorInput } from "@/components/studio/ColorInput";
+import { HarmonyPicker } from "@/components/studio/HarmonyPicker";
+import { TokenDisplay } from "@/components/studio/TokenDisplay";
+import { PreviewCanvas } from "@/components/preview/PreviewCanvas";
+import { useThemeStore } from "@/lib/store/theme.store";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Undo2, Redo2, Shuffle } from "lucide-react";
+
+export default function Home() {
+  const undo = useThemeStore((s) => s.undo);
+  const redo = useThemeStore((s) => s.redo);
+  const randomizeUnlocked = useThemeStore((s) => s.randomizeUnlocked);
+  const past = useThemeStore((s) => s.past);
+  const future = useThemeStore((s) => s.future);
+
+  return (
+    <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
+      {/* ── Left panel: Studio controls ── */}
+      <aside className="flex w-80 shrink-0 flex-col border-r border-border bg-card">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <div>
+            <h1 className="text-sm font-bold tracking-tight">
+              AI Design Engineer
+            </h1>
+            <p className="text-xs text-muted-foreground">
+              Design system generator
+            </p>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={undo}
+              disabled={past.length === 0}
+              title="Undo (Cmd+Z)"
+            >
+              <Undo2 className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={redo}
+              disabled={future.length === 0}
+              title="Redo (Cmd+Shift+Z)"
+            >
+              <Redo2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Controls */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+          <ColorInput />
+          <Separator />
+          <HarmonyPicker />
+          <Separator />
+          <TokenDisplay />
+        </div>
+
+        {/* Footer: Randomize */}
+        <div className="border-t border-border p-4">
+          <Button
+            className="w-full gap-2"
+            onClick={randomizeUnlocked}
+          >
+            <Shuffle className="h-4 w-4" />
+            Randomize Unlocked
+          </Button>
+        </div>
+      </aside>
+
+      {/* ── Right panel: Preview canvas ── */}
+      <main className="flex-1 overflow-hidden">
+        <PreviewCanvas />
+      </main>
+    </div>
+  );
+}
+</file>
+
+<file path="src/components/ui/button.tsx">
+"use client"
+
+import { Button as ButtonPrimitive } from "@base-ui/react/button"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+
+const buttonVariants = cva(
+  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
+        outline:
+          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+        ghost:
+          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+        destructive:
+          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default:
+          "h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+        xs: "h-6 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-7 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
+        lg: "h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+        icon: "size-8",
+        "icon-xs":
+          "size-6 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",
+        "icon-sm":
+          "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
+        "icon-lg": "size-9",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+)
+
+function Button({
+  className,
+  variant = "default",
+  size = "default",
+  ...props
+}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+  return (
+    <ButtonPrimitive
+      data-slot="button"
+      className={cn(buttonVariants({ variant, size, className }))}
+      {...props}
+    />
+  )
+}
+
+export { Button, buttonVariants }
+</file>
+
+<file path="src/lib/utils.ts">
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": ["node_modules"]
+}
+</file>
+
+<file path="package.json">
+{
+  "name": "ai-design-engineer",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.3.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "color-namer": "^1.4.0",
+    "culori": "^4.0.2",
+    "immer": "^11.1.4",
+    "lucide-react": "^1.7.0",
+    "nanoid": "^5.1.7",
+    "next": "16.2.2",
+    "next-themes": "^0.4.6",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "shadcn": "^4.1.2",
+    "tailwind-merge": "^3.5.0",
+    "tw-animate-css": "^1.4.0",
+    "zod": "^4.3.6",
+    "zustand": "^5.0.12"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/culori": "^4.0.1",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.2",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
+</file>
+
+<file path="src/app/globals.css">
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --radius: 0.625rem;
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+</file>
+
+</files>
