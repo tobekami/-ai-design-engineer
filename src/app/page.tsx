@@ -2,13 +2,20 @@
 
 import { ColorInput } from "@/components/studio/ColorInput";
 import { HarmonyPicker } from "@/components/studio/HarmonyPicker";
+import { IdeologyPicker } from "@/components/studio/IdeologyPicker";
+import { TypographyPicker } from "@/components/studio/TypographyPicker";
 import { RadiusSlider } from "@/components/studio/RadiusSlider";
 import { TokenDisplay } from "@/components/studio/TokenDisplay";
+import { FavouritesPanel } from "@/components/studio/FavouritesPanel";
 import { PreviewCanvas } from "@/components/preview/PreviewCanvas";
 import { useThemeStore } from "@/lib/store/theme.store";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Undo2, Redo2, Shuffle } from "lucide-react";
+import { ExportPanel } from "@/components/studio/ExportPanel";
+import { LogoUpload } from "@/components/studio/LogoUpload";
+import { UrlExtract } from "@/components/studio/UrlExtract";
 
 export default function Home() {
   const undo = useThemeStore((s) => s.undo);
@@ -16,6 +23,8 @@ export default function Home() {
   const randomizeUnlocked = useThemeStore((s) => s.randomizeUnlocked);
   const past = useThemeStore((s) => s.past);
   const future = useThemeStore((s) => s.future);
+
+  useKeyboardShortcuts();
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
@@ -55,26 +64,38 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Controls */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+        {/* Controls - reordered */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
+          <FavouritesPanel />
+          <Separator />
           <ColorInput />
+          <Separator />
+          <UrlExtract />
+          <Separator />
+          <LogoUpload />
+          <Separator />
+          <HarmonyPicker />
+          <Separator />
+          <TypographyPicker />
+          <Separator />
+          <IdeologyPicker />
           <Separator />
           <RadiusSlider />
           <Separator />
-          <HarmonyPicker />
+          <ExportPanel />
           <Separator />
           <TokenDisplay />
         </div>
 
-        {/* Footer: Randomize */}
-        <div className="border-t border-border p-4">
-          <Button
-            className="w-full gap-2"
-            onClick={randomizeUnlocked}
-          >
+        {/* Footer */}
+        <div className="border-t border-border p-4 space-y-2">
+          <Button className="w-full gap-2" onClick={randomizeUnlocked}>
             <Shuffle className="h-4 w-4" />
             Randomize Unlocked
           </Button>
+          <p className="text-center text-xs text-muted-foreground">
+            Cmd+Enter to randomize · Cmd+Z to undo
+          </p>
         </div>
       </aside>
 

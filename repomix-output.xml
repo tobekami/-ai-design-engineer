@@ -61,8 +61,12 @@ src/app/page.tsx
 src/components/preview/PreviewCanvas.tsx
 src/components/preview/ThemeProvider.tsx
 src/components/studio/ColorInput.tsx
+src/components/studio/FavouritesPanel.tsx
 src/components/studio/HarmonyPicker.tsx
+src/components/studio/IdeologyPicker.tsx
+src/components/studio/RadiusSlider.tsx
 src/components/studio/TokenDisplay.tsx
+src/components/studio/TypographyPicker.tsx
 src/components/ui/badge.tsx
 src/components/ui/button.tsx
 src/components/ui/card.tsx
@@ -71,12 +75,20 @@ src/components/ui/label.tsx
 src/components/ui/select.tsx
 src/components/ui/separator.tsx
 src/components/ui/tabs.tsx
+src/hooks/useColorName.ts
+src/hooks/useKeyboardShortcuts.ts
 src/lib/harmony/engine.ts
 src/lib/harmony/oklch.ts
 src/lib/harmony/tokens.ts
 src/lib/harmony/wcag.ts
+src/lib/ideology/blend.ts
+src/lib/ideology/registry.ts
 src/lib/schema/theme-config.schema.ts
 src/lib/store/theme.store.ts
+src/lib/store/url-sync.ts
+src/lib/typography/loader.ts
+src/lib/typography/registry.ts
+src/lib/typography/scorer.ts
 src/lib/utils.ts
 tsconfig.json
 </directory_structure>
@@ -84,10 +96,1433 @@ tsconfig.json
 <files>
 This section contains the contents of the repository's files.
 
+<file path="src/components/studio/FavouritesPanel.tsx">
+"use client";
+
+import { useState } from "react";
+import { useThemeStore } from "@/lib/store/theme.store";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Heart, Trash2, RotateCcw } from "lucide-react";
+
+export function FavouritesPanel() {
+    const favourites = useThemeStore((s) => s.favourites);
+    const saveFavourite = useThemeStore((s) => s.saveFavourite);
+    const removeFavourite = useThemeStore((s) => s.removeFavourite);
+    const restoreFavourite = useThemeStore((s) => s.restoreFavourite);
+    const currentId = useThemeStore((s) => s.current.id);
+
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+        <div className="space-y-3">
+            <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    Favourites
+                </Label>
+                <div className="flex items-center gap-1">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => saveFavourite()}
+                        title="Save current theme"
+                    >
+                        <Heart className="h-3.5 w-3.5 text-muted-foreground" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => setIsOpen(!isOpen)}
+                        title="Toggle favourites"
+                    >
+                        <span className="text-xs font-mono text-muted-foreground">
+                            {favourites.length}
+                        </span>
+                    </Button>
+                </div>
+            </div>
+
+            {isOpen && (
+                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                    {favourites.length === 0 && (
+                        <p className="text-xs text-muted-foreground text-center py-3">
+                            No favourites yet. Hit ♥ to save.
+                        </p>
+                    )}
+                    {favourites.map((fav) => (
+                        <div
+                            key={fav.id}
+                            className={`flex items-center gap-2 rounded-md border px-2.5 py-2 ${fav.config.id === currentId
+                                    ? "border-primary bg-primary/10"
+                                    : "border-border bg-card"
+                                }`}
+                        >
+                            {/* Color swatch */}
+                            <div
+                                className="h-5 w-5 shrink-0 rounded-sm border border-border"
+                                style={{ backgroundColor: fav.config.primaryHex }}
+                            />
+                            <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium truncate">{fav.label}</p>
+                                <p className="text-xs text-muted-foreground font-mono truncate">
+                                    {fav.config.primaryHex} · {fav.config.ideologyId}
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-0.5 shrink-0">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => restoreFavourite(fav.id)}
+                                    title="Restore"
+                                >
+                                    <RotateCcw className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => removeFavourite(fav.id)}
+                                    title="Remove"
+                                >
+                                    <Trash2 className="h-3 w-3 text-destructive" />
+                                </Button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+</file>
+
+<file path="src/components/studio/IdeologyPicker.tsx">
+"use client";
+
+import { useState } from "react";
+import { useThemeStore } from "@/lib/store/theme.store";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Lock, Unlock, ChevronDown } from "lucide-react";
+import { IDEOLOGY_LIST } from "@/lib/ideology/registry";
+
+export function IdeologyPicker() {
+    const ideologyId = useThemeStore((s) => s.current.ideologyId);
+    const ideologyTension = useThemeStore((s) => s.current.ideologyTension);
+    const ideologyLocked = useThemeStore((s) => s.current.locks.ideology);
+    const setIdeologyId = useThemeStore((s) => s.setIdeologyId);
+    const setRadiusOverride = useThemeStore((s) => s.setRadiusOverride);
+    const setIdeologyTension = useThemeStore((s) => s.setIdeologyTension);
+    const toggleLock = useThemeStore((s) => s.toggleLock);
+    const [open, setOpen] = useState(false);
+
+    return (
+        <div className="space-y-3">
+            <div className="flex items-center justify-between">
+                <button onClick={() => setOpen(!open)} className="flex items-center gap-1.5">
+                    <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                        Design Ideology
+                    </span>
+                    <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${open ? "rotate-0" : "-rotate-90"}`} />
+                </button>
+                <Button variant="ghost" size="icon" className="h-7 w-7"
+                    onClick={() => toggleLock("ideology")}
+                >
+                    {ideologyLocked
+                        ? <Lock className="h-3.5 w-3.5 text-primary" />
+                        : <Unlock className="h-3.5 w-3.5 text-muted-foreground" />}
+                </Button>
+            </div>
+
+            {open && (
+                <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-1.5">
+                        {IDEOLOGY_LIST.map((ideology) => (
+                            <button
+                                key={ideology.id}
+                                onClick={() => {
+                                    setIdeologyId(ideology.id);
+                                    setRadiusOverride(null);
+                                }}
+                                className={`rounded-md border px-2.5 py-2 text-left transition-all hover:border-primary/50 ${ideologyId === ideology.id
+                                    ? "border-primary bg-primary/10 text-primary"
+                                    : "border-border bg-card text-card-foreground"
+                                    }`}
+                            >
+                                <div className="text-xs font-semibold">{ideology.label}</div>
+                                <div className="truncate text-xs text-muted-foreground">{ideology.description}</div>
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-xs text-muted-foreground">Ideology Blend</Label>
+                            <span className="font-mono text-xs text-muted-foreground">
+                                {Math.round(ideologyTension * 100)}%
+                            </span>
+                        </div>
+                        <input
+                            type="range" min={0} max={100}
+                            value={Math.round(ideologyTension * 100)}
+                            onChange={(e) => setIdeologyTension(Number(e.target.value) / 100)}
+                            className="w-full accent-primary"
+                        />
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>Subtle</span>
+                            <span>Full</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+</file>
+
+<file path="src/components/studio/TypographyPicker.tsx">
+"use client";
+
+import { useEffect, useState } from "react";
+import { useThemeStore } from "@/lib/store/theme.store";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Lock, Unlock, ChevronDown } from "lucide-react";
+import { FONT_PAIRS, INDUSTRY_TAGS } from "@/lib/typography/registry";
+import { getTopPairs } from "@/lib/typography/scorer";
+import { injectFontPair, applyFontPair } from "@/lib/typography/loader";
+
+export function TypographyPicker() {
+    const fontPairId = useThemeStore((s) => s.current.fontPairId);
+    const industryTag = useThemeStore((s) => s.current.industryTag);
+    const ideologyId = useThemeStore((s) => s.current.ideologyId);
+    const fontsLocked = useThemeStore((s) => s.current.locks.fonts);
+    const setFontPairId = useThemeStore((s) => s.setFontPairId);
+    const setIndustryTag = useThemeStore((s) => s.setIndustryTag);
+    const toggleLock = useThemeStore((s) => s.toggleLock);
+    const [open, setOpen] = useState(true);
+
+    const topPairs = getTopPairs(industryTag, ideologyId, 3);
+    const currentPair = FONT_PAIRS.find((p) => p.id === fontPairId) ?? topPairs[0];
+
+    useEffect(() => {
+        if (!currentPair) return;
+        injectFontPair(currentPair);
+        applyFontPair(currentPair);
+    }, [currentPair]);
+
+    return (
+        <div className="space-y-3">
+            <div className="flex items-center justify-between">
+                <button onClick={() => setOpen(!open)} className="flex items-center gap-1.5">
+                    <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                        Typography
+                    </span>
+                    <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${open ? "rotate-0" : "-rotate-90"}`} />
+                </button>
+                <Button variant="ghost" size="icon" className="h-7 w-7"
+                    onClick={() => toggleLock("fonts")}
+                >
+                    {fontsLocked
+                        ? <Lock className="h-3.5 w-3.5 text-primary" />
+                        : <Unlock className="h-3.5 w-3.5 text-muted-foreground" />}
+                </Button>
+            </div>
+
+            {open && (
+                <div className="space-y-3">
+                    <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Industry</Label>
+                        <div className="flex flex-wrap gap-1">
+                            {INDUSTRY_TAGS.slice(0, 8).map((tag) => (
+                                <button
+                                    key={tag.id}
+                                    onClick={() => setIndustryTag(tag.id)}
+                                    className={`rounded-full border px-2 py-0.5 text-xs transition-all ${industryTag === tag.id
+                                        ? "border-primary bg-primary/10 text-primary"
+                                        : "border-border text-muted-foreground hover:border-primary/50"
+                                        }`}
+                                >
+                                    {tag.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <Label className="text-xs text-muted-foreground">Recommended Pairs</Label>
+                        <div className="space-y-1.5">
+                            {topPairs.map((pair) => (
+                                <button
+                                    key={pair.id}
+                                    onClick={() => setFontPairId(pair.id)}
+                                    className={`w-full rounded-md border px-3 py-2 text-left transition-all hover:border-primary/50 ${fontPairId === pair.id
+                                        ? "border-primary bg-primary/10"
+                                        : "border-border bg-card"
+                                        }`}
+                                >
+                                    <div className="text-sm font-semibold"
+                                        style={{ fontFamily: `"${pair.display.name}", sans-serif` }}>
+                                        {pair.display.name}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground"
+                                        style={{ fontFamily: `"${pair.body.name}", sans-serif` }}>
+                                        {pair.body.name} · {pair.mono.name}
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {currentPair && (
+                        <div className="rounded-md border border-border bg-muted/30 p-3 space-y-1">
+                            <div className="text-base font-bold"
+                                style={{ fontFamily: `"${currentPair.display.name}", sans-serif` }}>
+                                The quick brown fox
+                            </div>
+                            <div className="text-xs text-muted-foreground"
+                                style={{ fontFamily: `"${currentPair.body.name}", sans-serif` }}>
+                                Jumps over the lazy dog.
+                            </div>
+                            <div className="text-xs text-muted-foreground"
+                                style={{ fontFamily: `"${currentPair.mono.name}", monospace` }}>
+                                const theme = generate();
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+</file>
+
+<file path="src/hooks/useColorName.ts">
+import { useMemo } from "react";
+
+export function useColorName(hex: string): string {
+    return useMemo(() => {
+        if (!/^#[0-9A-Fa-f]{6}$/.test(hex)) return "";
+
+        const r = parseInt(hex.slice(1, 3), 16) / 255;
+        const g = parseInt(hex.slice(3, 5), 16) / 255;
+        const b = parseInt(hex.slice(5, 7), 16) / 255;
+
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        const l = (max + min) / 2;
+        const d = max - min;
+        const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+
+        if (s < 0.08) {
+            if (l > 0.92) return "White";
+            if (l > 0.72) return "Light Gray";
+            if (l > 0.42) return "Gray";
+            if (l > 0.18) return "Dark Gray";
+            return "Black";
+        }
+
+        let h = 0;
+        if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+        else if (max === g) h = ((b - r) / d + 2) / 6;
+        else h = ((r - g) / d + 4) / 6;
+        const hDeg = h * 360;
+
+        const li = l > 0.72 ? "Light " : l < 0.32 ? "Deep " : "";
+        const sa = s > 0.72 ? "Vivid " : s < 0.32 ? "Muted " : "";
+
+        if (hDeg < 15 || hDeg >= 345) return `${li}${sa}Red`;
+        if (hDeg < 40) return `${li}${sa}Orange`;
+        if (hDeg < 65) return `${li}${sa}Yellow`;
+        if (hDeg < 150) return `${li}${sa}Green`;
+        if (hDeg < 175) return `${li}${sa}Teal`;
+        if (hDeg < 195) return `${li}${sa}Cyan`;
+        if (hDeg < 255) return `${li}${sa}Blue`;
+        if (hDeg < 285) return `${li}${sa}Violet`;
+        if (hDeg < 315) return `${li}${sa}Purple`;
+        return `${li}${sa}Pink`;
+    }, [hex]);
+}
+</file>
+
+<file path="src/hooks/useKeyboardShortcuts.ts">
+"use client";
+
+import { useEffect } from "react";
+import { useThemeStore } from "@/lib/store/theme.store";
+
+export function useKeyboardShortcuts() {
+    const undo = useThemeStore((s) => s.undo);
+    const redo = useThemeStore((s) => s.redo);
+    const randomize = useThemeStore((s) => s.randomizeUnlocked);
+
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            const meta = e.metaKey || e.ctrlKey;
+            if (meta && e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+            if (meta && e.key === "z" && e.shiftKey) { e.preventDefault(); redo(); }
+            if (meta && e.key === "Enter") { e.preventDefault(); randomize(); }
+        };
+        window.addEventListener("keydown", handler);
+        return () => window.removeEventListener("keydown", handler);
+    }, [undo, redo, randomize]);
+}
+</file>
+
+<file path="src/lib/ideology/blend.ts">
+import { IDEOLOGY_REGISTRY, type TokenShift } from "./registry";
+import type { ShadcnTokenSet } from "../schema/theme-config.schema";
+
+export interface AppliedIdeology {
+    tokens: ShadcnTokenSet;
+    css: Record<string, string>;
+    radiusPx: number;
+}
+
+// Parse an oklch() CSS string into components
+function parseOklch(value: string): { l: number; c: number; h: number } | null {
+    if (!value.startsWith("oklch(")) return null;
+    const inner = value.replace("oklch(", "").replace(")", "").trim();
+    const parts = inner.split(/\s+/);
+    if (parts.length < 3) return null;
+    return {
+        l: parseFloat(parts[0]),
+        c: parseFloat(parts[1]),
+        h: parseFloat(parts[2]) || 0,
+    };
+}
+
+// Serialize back to oklch() CSS string
+function serializeOklch(l: number, c: number, h: number): string {
+    const lc = Math.max(0, Math.min(1, l));
+    const cc = Math.max(0, Math.min(0.4, c));
+    const hc = ((h % 360) + 360) % 360;
+    return `oklch(${lc.toFixed(4)} ${cc.toFixed(4)} ${hc.toFixed(2)})`;
+}
+
+// Apply a TokenShift to an oklch() CSS string, blended by tension (0-1)
+function applyShift(value: string, shift: TokenShift, tension: number): string {
+    if (!value || tension === 0) return value;
+
+    const parsed = parseOklch(value);
+    if (!parsed) return value;
+
+    let { l, c, h } = parsed;
+
+    // Lightness
+    if (shift.l_clamp !== undefined) {
+        l = l + (shift.l_clamp - l) * tension;
+    }
+    if (shift.l_delta !== undefined) {
+        l = l + shift.l_delta * tension;
+    }
+
+    // Chroma
+    if (shift.c_clamp !== undefined) {
+        c = c + (shift.c_clamp - c) * tension;
+    }
+    if (shift.c_multiply !== undefined) {
+        const target = c * shift.c_multiply;
+        c = c + (target - c) * tension;
+    }
+
+    // Hue
+    if (shift.h_delta !== undefined) {
+        h = h + shift.h_delta * tension;
+    }
+
+    return serializeOklch(l, c, h);
+}
+
+export function applyIdeology(
+    tokens: ShadcnTokenSet,
+    ideologyId: string,
+    tension: number = 1
+): AppliedIdeology {
+    const ideology = IDEOLOGY_REGISTRY[ideologyId] ?? IDEOLOGY_REGISTRY.default;
+    const shifts = ideology.tokenShifts;
+
+    // Radius — lerp from current token radius to ideology radius
+    // Radius is already set correctly by the store before this is called
+    // Just preserve whatever the token already has
+    const radiusPx = parseInt(tokens.radius) || 8;
+    const radius = tokens.radius;
+
+    // Apply token shifts
+    const t = tokens;
+    const appliedTokens: ShadcnTokenSet = {
+        ...t,
+        radius,
+        background: shifts.background ? applyShift(t.background, shifts.background, tension) : t.background,
+        foreground: shifts.foreground ? applyShift(t.foreground, shifts.foreground, tension) : t.foreground,
+        card: shifts.card ? applyShift(t.card, shifts.card, tension) : t.card,
+        cardForeground: shifts.cardForeground ? applyShift(t.cardForeground, shifts.cardForeground, tension) : t.cardForeground,
+        primary: shifts.primary ? applyShift(t.primary, shifts.primary, tension) : t.primary,
+        primaryForeground: shifts.primaryForeground ? applyShift(t.primaryForeground, shifts.primaryForeground, tension) : t.primaryForeground,
+        secondary: shifts.secondary ? applyShift(t.secondary, shifts.secondary, tension) : t.secondary,
+        secondaryForeground: shifts.secondaryForeground ? applyShift(t.secondaryForeground, shifts.secondaryForeground, tension) : t.secondaryForeground,
+        muted: shifts.muted ? applyShift(t.muted, shifts.muted, tension) : t.muted,
+        mutedForeground: shifts.mutedForeground ? applyShift(t.mutedForeground, shifts.mutedForeground, tension) : t.mutedForeground,
+        accent: shifts.accent ? applyShift(t.accent, shifts.accent, tension) : t.accent,
+        accentForeground: shifts.accentForeground ? applyShift(t.accentForeground, shifts.accentForeground, tension) : t.accentForeground,
+        border: shifts.border ? applyShift(t.border, shifts.border, tension) : t.border,
+        input: shifts.input ? applyShift(t.input, shifts.input, tension) : t.input,
+        ring: shifts.ring ? applyShift(t.ring, shifts.ring, tension) : t.ring,
+        // Dark mode
+        darkBackground: shifts.darkBackground ? applyShift(t.darkBackground, shifts.darkBackground, tension) : t.darkBackground,
+        darkForeground: shifts.darkForeground ? applyShift(t.darkForeground, shifts.darkForeground, tension) : t.darkForeground,
+        darkCard: shifts.darkCard ? applyShift(t.darkCard, shifts.darkCard, tension) : t.darkCard,
+        darkPrimary: shifts.darkPrimary ? applyShift(t.darkPrimary, shifts.darkPrimary, tension) : t.darkPrimary,
+        darkBorder: shifts.darkBorder ? applyShift(t.darkBorder, shifts.darkBorder, tension) : t.darkBorder,
+    };
+
+    const css: Record<string, string> = {
+        "--border-width": ideology.constraints.borderWidth,
+        "--card-shadow": ideology.constraints.shadowStyle,
+        ...ideology.cssOverrides,
+    };
+
+    return { tokens: appliedTokens, css, radiusPx };
+}
+
+export function getIdeologyRadiusPx(ideologyId: string): number {
+    return IDEOLOGY_REGISTRY[ideologyId]?.constraints.radiusPx ?? 8;
+}
+</file>
+
+<file path="src/lib/ideology/registry.ts">
+export interface TokenShift {
+    // Lightness: absolute clamp or relative delta
+    l_clamp?: number;      // force lightness to exactly this value
+    l_delta?: number;      // shift lightness by this amount (+/-)
+    // Chroma: absolute clamp or relative multiplier
+    c_clamp?: number;      // force chroma to exactly this value
+    c_multiply?: number;   // multiply chroma by this factor
+    // Hue: relative shift in degrees
+    h_delta?: number;      // shift hue by this many degrees
+}
+
+export interface IdeologyTokenShifts {
+    background?: TokenShift;
+    foreground?: TokenShift;
+    card?: TokenShift;
+    cardForeground?: TokenShift;
+    primary?: TokenShift;
+    primaryForeground?: TokenShift;
+    secondary?: TokenShift;
+    secondaryForeground?: TokenShift;
+    muted?: TokenShift;
+    mutedForeground?: TokenShift;
+    accent?: TokenShift;
+    accentForeground?: TokenShift;
+    border?: TokenShift;
+    input?: TokenShift;
+    ring?: TokenShift;
+    // Dark mode mirrors
+    darkBackground?: TokenShift;
+    darkForeground?: TokenShift;
+    darkCard?: TokenShift;
+    darkPrimary?: TokenShift;
+    darkBorder?: TokenShift;
+}
+
+export interface IdeologyConfig {
+    id: string;
+    label: string;
+    description: string;
+    constraints: {
+        radiusPx: number;
+        borderWidth: string;
+        shadowStyle: string;
+        backgroundOpacity: number;
+        fontWeightDisplay: number;
+        letterSpacingDisplay: string;
+        surfaceStyle: "solid" | "glass" | "flat";
+    };
+    cssOverrides: Record<string, string>;
+    tokenShifts: IdeologyTokenShifts;
+}
+
+export const IDEOLOGY_REGISTRY: Record<string, IdeologyConfig> = {
+    default: {
+        id: "default",
+        label: "Default",
+        description: "Clean modern SaaS",
+        constraints: {
+            radiusPx: 8,
+            borderWidth: "1px",
+            shadowStyle: "0 1px 3px 0 rgb(0 0 0 / 0.1)",
+            backgroundOpacity: 1,
+            fontWeightDisplay: 600,
+            letterSpacingDisplay: "-0.02em",
+            surfaceStyle: "solid",
+        },
+        cssOverrides: {},
+        tokenShifts: {},
+    },
+
+    glassmorphism: {
+        id: "glassmorphism",
+        label: "Glassmorphism",
+        description: "Frosted glass, blur, depth",
+        constraints: {
+            radiusPx: 16,
+            borderWidth: "1px",
+            shadowStyle: "0 8px 32px 0 rgb(0 0 0 / 0.12)",
+            backgroundOpacity: 0.7,
+            fontWeightDisplay: 500,
+            letterSpacingDisplay: "-0.01em",
+            surfaceStyle: "glass",
+        },
+        cssOverrides: {
+            "--glass-blur": "blur(12px)",
+            "--glass-border": "1px solid rgb(255 255 255 / 0.2)",
+        },
+        tokenShifts: {
+            // Background stays light but gets a stronger hue tint
+            background: { l_clamp: 0.96, c_multiply: 2.0 },
+            // Card becomes slightly lighter and more transparent-feeling
+            card: { l_clamp: 0.99, c_multiply: 1.5 },
+            // Border very subtle — glass shouldn't have hard lines
+            border: { l_delta: 0.05, c_clamp: 0.008 },
+            // Primary stays vibrant
+            primary: { c_multiply: 1.1 },
+            // Muted gets a stronger tint to feel like frosted color
+            muted: { l_clamp: 0.93, c_multiply: 2.5 },
+            // Dark mode — deeper, more saturated backgrounds
+            darkBackground: { l_clamp: 0.08, c_multiply: 2.0 },
+            darkCard: { l_clamp: 0.13, c_multiply: 2.0 },
+        },
+    },
+
+    neobrutalism: {
+        id: "neobrutalism",
+        label: "Neo-Brutalism",
+        description: "Hard borders, raw energy",
+        constraints: {
+            radiusPx: 0,
+            borderWidth: "3px",
+            shadowStyle: "4px 4px 0px 0px #000000",
+            backgroundOpacity: 1,
+            fontWeightDisplay: 800,
+            letterSpacingDisplay: "-0.03em",
+            surfaceStyle: "flat",
+        },
+        cssOverrides: {
+            "--brutal-border": "3px solid #000000",
+            "--brutal-shadow": "4px 4px 0px 0px #000000",
+        },
+        tokenShifts: {
+            // Background forced pure/near-white — brutalism needs stark contrast
+            background: { l_clamp: 0.99, c_clamp: 0.005 },
+            card: { l_clamp: 1.0, c_clamp: 0.0 },
+            // Border forced near-black regardless of palette hue
+            border: { l_clamp: 0.1, c_clamp: 0.01 },
+            input: { l_clamp: 0.12, c_clamp: 0.01 },
+            ring: { l_clamp: 0.08, c_clamp: 0.0 },
+            // Primary stays fully saturated — the one pop of color
+            primary: { c_multiply: 1.3 },
+            // Secondary gets a strong saturated tint — color blocking energy
+            secondary: { l_clamp: 0.88, c_multiply: 2.0 },
+            secondaryForeground: { l_clamp: 0.1, c_multiply: 1.0 },
+            // Dark mode — inverse: near-black bg, white borders
+            darkBackground: { l_clamp: 0.06, c_clamp: 0.005 },
+            darkBorder: { l_clamp: 0.92, c_clamp: 0.01 },
+        },
+    },
+
+    minimal: {
+        id: "minimal",
+        label: "Minimal / Swiss",
+        description: "Whitespace, precision, clarity",
+        constraints: {
+            radiusPx: 4,
+            borderWidth: "1px",
+            shadowStyle: "none",
+            backgroundOpacity: 1,
+            fontWeightDisplay: 400,
+            letterSpacingDisplay: "0.01em",
+            surfaceStyle: "flat",
+        },
+        cssOverrides: {},
+        tokenShifts: {
+            // Everything desaturated — let whitespace do the work
+            background: { l_clamp: 0.99, c_clamp: 0.003 },
+            card: { l_clamp: 1.0, c_clamp: 0.0 },
+            secondary: { l_clamp: 0.96, c_clamp: 0.004 },
+            muted: { l_clamp: 0.96, c_clamp: 0.003 },
+            accent: { l_clamp: 0.95, c_clamp: 0.004 },
+            border: { l_clamp: 0.88, c_clamp: 0.004 },
+            // Primary stays — it's the only color anchor
+            primary: { c_multiply: 0.9 },
+            // Foreground pushed to near-black for max readability
+            foreground: { l_clamp: 0.1, c_clamp: 0.005 },
+            mutedForeground: { l_clamp: 0.5, c_clamp: 0.008 },
+        },
+    },
+
+    colorblocking: {
+        id: "colorblocking",
+        label: "Color Blocking",
+        description: "Bold zones, editorial energy",
+        constraints: {
+            radiusPx: 0,
+            borderWidth: "2px",
+            shadowStyle: "none",
+            backgroundOpacity: 1,
+            fontWeightDisplay: 900,
+            letterSpacingDisplay: "-0.04em",
+            surfaceStyle: "flat",
+        },
+        cssOverrides: {},
+        tokenShifts: {
+            // Background gets a strong saturated color — full bleed zones
+            background: { l_clamp: 0.95, c_multiply: 3.0 },
+            // Card uses the secondary hue at full chroma — different color zone
+            card: { l_clamp: 0.92, c_multiply: 3.5 },
+            // Secondary maxed out for maximum contrast between zones
+            secondary: { l_clamp: 0.85, c_multiply: 3.0 },
+            secondaryForeground: { l_clamp: 0.1, c_multiply: 0.5 },
+            // Accent maxed — third color zone
+            accent: { l_clamp: 0.88, c_multiply: 3.0 },
+            accentForeground: { l_clamp: 0.1, c_multiply: 0.5 },
+            // Primary fully saturated
+            primary: { c_multiply: 1.4 },
+            // Borders strong and dark
+            border: { l_clamp: 0.15, c_clamp: 0.01 },
+        },
+    },
+
+    bento: {
+        id: "bento",
+        label: "Bento Grid",
+        description: "Asymmetric cards, tech energy",
+        constraints: {
+            radiusPx: 12,
+            borderWidth: "1px",
+            shadowStyle: "0 2px 8px 0 rgb(0 0 0 / 0.08)",
+            backgroundOpacity: 1,
+            fontWeightDisplay: 600,
+            letterSpacingDisplay: "-0.02em",
+            surfaceStyle: "solid",
+        },
+        cssOverrides: {},
+        tokenShifts: {
+            // Background slightly tinted — cards pop against it
+            background: { l_clamp: 0.96, c_multiply: 1.5 },
+            // Card whiter than background for contrast
+            card: { l_clamp: 0.99, c_multiply: 0.5 },
+            // Secondary and accent get visible tints for bento variety
+            secondary: { l_clamp: 0.90, c_multiply: 2.0 },
+            accent: { l_clamp: 0.88, c_multiply: 2.5 },
+            // Subtle borders
+            border: { l_clamp: 0.88, c_clamp: 0.01 },
+            // Dark mode — dark bento with slightly lighter cards
+            darkBackground: { l_clamp: 0.1, c_multiply: 1.5 },
+            darkCard: { l_clamp: 0.16, c_multiply: 1.5 },
+        },
+    },
+
+    softpastel: {
+        id: "softpastel",
+        label: "Soft / Pastel",
+        description: "Gentle, rounded, warm",
+        constraints: {
+            radiusPx: 20,
+            borderWidth: "1px",
+            shadowStyle: "0 2px 12px 0 rgb(0 0 0 / 0.06)",
+            backgroundOpacity: 1,
+            fontWeightDisplay: 500,
+            letterSpacingDisplay: "0em",
+            surfaceStyle: "solid",
+        },
+        cssOverrides: {},
+        tokenShifts: {
+            // Everything pushed high lightness, low chroma — pastel palette
+            background: { l_clamp: 0.97, c_multiply: 0.6 },
+            card: { l_clamp: 0.99, c_multiply: 0.4 },
+            secondary: { l_clamp: 0.93, c_multiply: 0.7 },
+            muted: { l_clamp: 0.95, c_multiply: 0.5 },
+            accent: { l_clamp: 0.92, c_multiply: 0.8 },
+            // Primary reduced chroma — pastel version of brand color
+            primary: { l_delta: 0.1, c_multiply: 0.65 },
+            // Border very soft
+            border: { l_clamp: 0.90, c_clamp: 0.01 },
+            // Foreground softened slightly — not pure black
+            foreground: { l_clamp: 0.2, c_multiply: 0.5 },
+        },
+    },
+
+    darkeditorial: {
+        id: "darkeditorial",
+        label: "Dark Editorial",
+        description: "High contrast, media-forward",
+        constraints: {
+            radiusPx: 2,
+            borderWidth: "1px",
+            shadowStyle: "none",
+            backgroundOpacity: 1,
+            fontWeightDisplay: 700,
+            letterSpacingDisplay: "-0.02em",
+            surfaceStyle: "flat",
+        },
+        cssOverrides: {},
+        tokenShifts: {
+            // Force dark background in light mode — editorial inverts the norm
+            background: { l_clamp: 0.1, c_multiply: 1.5 },
+            foreground: { l_clamp: 0.95, c_clamp: 0.01 },
+            card: { l_clamp: 0.15, c_multiply: 1.5 },
+            cardForeground: { l_clamp: 0.95, c_clamp: 0.01 },
+            // Muted becomes dark surface
+            muted: { l_clamp: 0.18, c_multiply: 1.2 },
+            mutedForeground: { l_clamp: 0.65, c_clamp: 0.02 },
+            // Primary brightened to pop against dark bg
+            primary: { l_delta: 0.1, c_multiply: 1.2 },
+            // Border subtle on dark
+            border: { l_clamp: 0.38, c_clamp: 0.015 },
+            input: { l_clamp: 0.32, c_clamp: 0.01 },
+            // Secondary gets a strong accent role
+            secondary: { l_clamp: 0.2, c_multiply: 2.0 },
+            secondaryForeground: { l_clamp: 0.9, c_clamp: 0.01 },
+        },
+    },
+
+    scifi: {
+        id: "scifi",
+        label: "Sci-Fi / Terminal",
+        description: "Monospace, glow, precision",
+        constraints: {
+            radiusPx: 0,
+            borderWidth: "1px",
+            shadowStyle: "0 0 12px 0 var(--ring)",
+            backgroundOpacity: 1,
+            fontWeightDisplay: 400,
+            letterSpacingDisplay: "0.05em",
+            surfaceStyle: "flat",
+        },
+        cssOverrides: {
+            "--glow": "0 0 8px 0 var(--primary)",
+        },
+        tokenShifts: {
+            // Near-black background
+            background: { l_clamp: 0.07, c_multiply: 2.0 },
+            foreground: { l_clamp: 0.9, c_multiply: 2.0 },
+            card: { l_clamp: 0.11, c_multiply: 2.0 },
+            cardForeground: { l_clamp: 0.9, c_multiply: 1.5 },
+            muted: { l_clamp: 0.13, c_multiply: 1.5 },
+            mutedForeground: { l_clamp: 0.6, c_multiply: 2.0 },
+            // Primary maxed chroma — the glow color
+            primary: { l_clamp: 0.75, c_multiply: 1.5 },
+            primaryForeground: { l_clamp: 0.08, c_clamp: 0.01 },
+            // Border dim but present
+            border: { l_clamp: 0.35, c_multiply: 2.5 },
+            // Ring = glow effect
+            ring: { l_clamp: 0.75, c_multiply: 1.5 },
+            // Accent as secondary glow color
+            accent: { l_clamp: 0.15, c_multiply: 2.5 },
+            accentForeground: { l_clamp: 0.85, c_multiply: 2.0 },
+        },
+    },
+
+    claymorphism: {
+        id: "claymorphism",
+        label: "Claymorphism",
+        description: "Chunky, playful, dimensional",
+        constraints: {
+            radiusPx: 24,
+            borderWidth: "0px",
+            shadowStyle: "0 8px 0 0 rgb(0 0 0 / 0.15), 0 12px 24px 0 rgb(0 0 0 / 0.1)",
+            backgroundOpacity: 1,
+            fontWeightDisplay: 700,
+            letterSpacingDisplay: "-0.01em",
+            surfaceStyle: "solid",
+        },
+        cssOverrides: {},
+        tokenShifts: {
+            // Warm, slightly saturated background
+            background: { l_clamp: 0.96, c_multiply: 1.8 },
+            // Card brighter and more saturated — clay is chunky and colorful
+            card: { l_clamp: 0.98, c_multiply: 2.0 },
+            // Primary pushed brighter and more saturated
+            primary: { l_delta: 0.05, c_multiply: 1.2 },
+            // Secondary and accent get good chroma — playful palette
+            secondary: { l_clamp: 0.90, c_multiply: 2.5 },
+            accent: { l_clamp: 0.88, c_multiply: 2.8 },
+            // Muted still visible with color
+            muted: { l_clamp: 0.93, c_multiply: 1.5 },
+            // No border — clay doesn't have hard lines
+            border: { l_clamp: 0.92, c_clamp: 0.005 },
+        },
+    },
+};
+
+export const IDEOLOGY_LIST = Object.values(IDEOLOGY_REGISTRY);
+</file>
+
+<file path="src/lib/store/url-sync.ts">
+import type { ThemeConfig } from "../schema/theme-config.schema";
+
+export function serializeTheme(config: ThemeConfig): string {
+    try {
+        const json = JSON.stringify({
+            primaryHex: config.primaryHex,
+            harmonyType: config.harmonyType,
+            ideologyId: config.ideologyId,
+            ideologyTension: config.ideologyTension,
+            fontPairId: config.fontPairId,
+            industryTag: config.industryTag,
+            radiusOverride: config.radiusOverride,
+            locks: config.locks,
+        });
+        return btoa(encodeURIComponent(json));
+    } catch {
+        return "";
+    }
+}
+
+export function deserializeTheme(param: string): Partial<ThemeConfig> | null {
+    try {
+        const json = decodeURIComponent(atob(param));
+        return JSON.parse(json);
+    } catch {
+        return null;
+    }
+}
+
+export function pushThemeToUrl(config: ThemeConfig): void {
+    if (typeof window === "undefined") return;
+    const encoded = serializeTheme(config);
+    const url = new URL(window.location.href);
+    url.searchParams.set("theme", encoded);
+    window.history.replaceState(null, "", url.toString());
+}
+
+export function readThemeFromUrl(): Partial<ThemeConfig> | null {
+    if (typeof window === "undefined") return null;
+    const param = new URLSearchParams(window.location.search).get("theme");
+    if (!param) return null;
+    return deserializeTheme(param);
+}
+</file>
+
+<file path="src/lib/typography/loader.ts">
+const loadedFonts = new Set<string>();
+
+export function injectGoogleFont(googleFamily: string, weights: number[]): void {
+    if (typeof window === "undefined") return;
+    const key = `${googleFamily}-${weights.join("-")}`;
+    if (loadedFonts.has(key)) return;
+    const weightsStr = weights.join(";");
+    const url = `https://fonts.googleapis.com/css2?family=${googleFamily}:wght@${weightsStr}&display=swap`;
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = url;
+    document.head.appendChild(link);
+    loadedFonts.add(key);
+}
+
+export function injectFontPair(pair: {
+    display: { googleFamily: string; weights: number[] };
+    body: { googleFamily: string; weights: number[] };
+    mono: { googleFamily: string };
+}): void {
+    injectGoogleFont(pair.display.googleFamily, pair.display.weights);
+    if (pair.body.googleFamily !== pair.display.googleFamily) {
+        injectGoogleFont(pair.body.googleFamily, pair.body.weights);
+    }
+    injectGoogleFont(pair.mono.googleFamily, [400]);
+}
+
+export function applyFontPair(pair: {
+    display: { name: string };
+    body: { name: string };
+    mono: { name: string };
+}): void {
+    if (typeof window === "undefined") return;
+    const root = document.documentElement;
+    root.style.setProperty("--font-display", `"${pair.display.name}", sans-serif`);
+    root.style.setProperty("--font-body", `"${pair.body.name}", sans-serif`);
+    root.style.setProperty("--font-mono", `"${pair.mono.name}", monospace`);
+    // Also apply directly to body so all text inherits it
+    document.body.style.fontFamily = `"${pair.body.name}", sans-serif`;
+}
+</file>
+
+<file path="src/lib/typography/registry.ts">
+export interface FontPair {
+    id: string;
+    display: {
+        name: string;
+        googleFamily: string;
+        weights: number[];
+    };
+    body: {
+        name: string;
+        googleFamily: string;
+        weights: number[];
+    };
+    mono: {
+        name: string;
+        googleFamily: string;
+    };
+    industryTags: string[];
+    moodTags: string[];
+    characterContrast: number; // 0-1, how different display vs body feel
+}
+
+export const FONT_PAIRS: FontPair[] = [
+    // ── Tech / SaaS ──────────────────────────────────────────────
+    {
+        id: "dm-sans-inter",
+        display: { name: "DM Sans", googleFamily: "DM+Sans", weights: [400, 500, 600, 700] },
+        body: { name: "DM Sans", googleFamily: "DM+Sans", weights: [400, 500] },
+        mono: { name: "JetBrains Mono", googleFamily: "JetBrains+Mono" },
+        industryTags: ["tech", "saas", "startup"],
+        moodTags: ["modern", "clean", "friendly"],
+        characterContrast: 0.2,
+    },
+    {
+        id: "outfit-sora",
+        display: { name: "Outfit", googleFamily: "Outfit", weights: [500, 600, 700, 800] },
+        body: { name: "Sora", googleFamily: "Sora", weights: [400, 500] },
+        mono: { name: "Fira Code", googleFamily: "Fira+Code" },
+        industryTags: ["tech", "saas", "startup"],
+        moodTags: ["geometric", "modern", "precise"],
+        characterContrast: 0.4,
+    },
+    {
+        id: "space-grotesk-inter",
+        display: { name: "Space Grotesk", googleFamily: "Space+Grotesk", weights: [500, 600, 700] },
+        body: { name: "Inter", googleFamily: "Inter", weights: [400, 500] },
+        mono: { name: "Space Mono", googleFamily: "Space+Mono" },
+        industryTags: ["tech", "saas", "creative"],
+        moodTags: ["technical", "distinctive", "sharp"],
+        characterContrast: 0.5,
+    },
+
+    // ── Editorial / Luxury ───────────────────────────────────────
+    {
+        id: "playfair-jost",
+        display: { name: "Playfair Display", googleFamily: "Playfair+Display", weights: [400, 600, 700] },
+        body: { name: "Jost", googleFamily: "Jost", weights: [300, 400, 500] },
+        mono: { name: "Courier Prime", googleFamily: "Courier+Prime" },
+        industryTags: ["editorial", "luxury", "fashion"],
+        moodTags: ["elegant", "refined", "classic"],
+        characterContrast: 0.9,
+    },
+    {
+        id: "cormorant-lato",
+        display: { name: "Cormorant Garamond", googleFamily: "Cormorant+Garamond", weights: [400, 500, 600] },
+        body: { name: "Lato", googleFamily: "Lato", weights: [300, 400, 700] },
+        mono: { name: "Courier Prime", googleFamily: "Courier+Prime" },
+        industryTags: ["editorial", "luxury", "legal"],
+        moodTags: ["sophisticated", "timeless", "premium"],
+        characterContrast: 0.95,
+    },
+
+    // ── Startup / Consumer ───────────────────────────────────────
+    {
+        id: "plus-jakarta-nunito",
+        display: { name: "Plus Jakarta Sans", googleFamily: "Plus+Jakarta+Sans", weights: [500, 600, 700, 800] },
+        body: { name: "Nunito", googleFamily: "Nunito", weights: [400, 500, 600] },
+        mono: { name: "JetBrains Mono", googleFamily: "JetBrains+Mono" },
+        industryTags: ["startup", "consumer", "wellness"],
+        moodTags: ["friendly", "approachable", "energetic"],
+        characterContrast: 0.3,
+    },
+    {
+        id: "cabinet-satoshi",
+        display: { name: "Cabinet Grotesk", googleFamily: "Cabinet+Grotesk", weights: [500, 700, 800] },
+        body: { name: "Satoshi", googleFamily: "Satoshi", weights: [400, 500] },
+        mono: { name: "Fira Code", googleFamily: "Fira+Code" },
+        industryTags: ["startup", "creative", "agency"],
+        moodTags: ["bold", "confident", "modern"],
+        characterContrast: 0.5,
+    },
+
+    // ── Creative / Agency ────────────────────────────────────────
+    {
+        id: "syne-inter",
+        display: { name: "Syne", googleFamily: "Syne", weights: [600, 700, 800] },
+        body: { name: "Inter", googleFamily: "Inter", weights: [400, 500] },
+        mono: { name: "Space Mono", googleFamily: "Space+Mono" },
+        industryTags: ["creative", "agency", "portfolio"],
+        moodTags: ["expressive", "distinctive", "avant-garde"],
+        characterContrast: 0.85,
+    },
+    {
+        id: "bebas-dm",
+        display: { name: "Bebas Neue", googleFamily: "Bebas+Neue", weights: [400] },
+        body: { name: "DM Sans", googleFamily: "DM+Sans", weights: [400, 500] },
+        mono: { name: "Fira Code", googleFamily: "Fira+Code" },
+        industryTags: ["creative", "agency", "fashion"],
+        moodTags: ["bold", "impactful", "editorial"],
+        characterContrast: 1.0,
+    },
+
+    // ── Wellness / Lifestyle ─────────────────────────────────────
+    {
+        id: "quicksand-karla",
+        display: { name: "Quicksand", googleFamily: "Quicksand", weights: [500, 600, 700] },
+        body: { name: "Karla", googleFamily: "Karla", weights: [400, 500] },
+        mono: { name: "JetBrains Mono", googleFamily: "JetBrains+Mono" },
+        industryTags: ["wellness", "lifestyle", "consumer"],
+        moodTags: ["soft", "approachable", "calm"],
+        characterContrast: 0.2,
+    },
+
+    // ── Food / Hospitality ───────────────────────────────────────
+    {
+        id: "zilla-source",
+        display: { name: "Zilla Slab", googleFamily: "Zilla+Slab", weights: [400, 500, 600] },
+        body: { name: "Source Sans 3", googleFamily: "Source+Sans+3", weights: [400, 600] },
+        mono: { name: "Courier Prime", googleFamily: "Courier+Prime" },
+        industryTags: ["food", "hospitality", "lifestyle"],
+        moodTags: ["warm", "trustworthy", "grounded"],
+        characterContrast: 0.7,
+    },
+
+    // ── Sci-Fi / Terminal ────────────────────────────────────────
+    {
+        id: "share-tech-mono",
+        display: { name: "Share Tech Mono", googleFamily: "Share+Tech+Mono", weights: [400] },
+        body: { name: "Share Tech Mono", googleFamily: "Share+Tech+Mono", weights: [400] },
+        mono: { name: "Share Tech Mono", googleFamily: "Share+Tech+Mono" },
+        industryTags: ["tech", "creative"],
+        moodTags: ["terminal", "technical", "precise"],
+        characterContrast: 0.0,
+    },
+];
+
+export const INDUSTRY_TAGS = [
+    { id: "tech", label: "Tech / SaaS" },
+    { id: "saas", label: "SaaS" },
+    { id: "startup", label: "Startup / Consumer" },
+    { id: "editorial", label: "Editorial / Luxury" },
+    { id: "luxury", label: "Luxury" },
+    { id: "creative", label: "Creative / Agency" },
+    { id: "agency", label: "Agency" },
+    { id: "wellness", label: "Wellness / Lifestyle" },
+    { id: "food", label: "Food / Hospitality" },
+    { id: "fashion", label: "Fashion" },
+    { id: "legal", label: "Legal / Finance" },
+    { id: "portfolio", label: "Portfolio" },
+];
+</file>
+
+<file path="src/lib/typography/scorer.ts">
+import { FONT_PAIRS, type FontPair } from "./registry";
+
+interface ScoringContext {
+    industryTag: string;
+    ideologyId: string;
+}
+
+// Font personality axes — each pair is rated on these
+// These are the dimensions that should drive matching
+const FONT_PERSONALITY: Record<string, {
+    formality: number;    // 0=casual, 1=formal
+    energy: number;       // 0=calm, 1=energetic  
+    techiness: number;    // 0=humanist, 1=technical
+    expressiveness: number; // 0=neutral, 1=expressive
+}> = {
+    "dm-sans-inter": { formality: 0.5, energy: 0.4, techiness: 0.5, expressiveness: 0.2 },
+    "outfit-sora": { formality: 0.5, energy: 0.5, techiness: 0.6, expressiveness: 0.3 },
+    "space-grotesk-inter": { formality: 0.5, energy: 0.5, techiness: 0.7, expressiveness: 0.5 },
+    "playfair-jost": { formality: 0.9, energy: 0.3, techiness: 0.1, expressiveness: 0.7 },
+    "cormorant-lato": { formality: 1.0, energy: 0.2, techiness: 0.0, expressiveness: 0.8 },
+    "plus-jakarta-nunito": { formality: 0.3, energy: 0.7, techiness: 0.3, expressiveness: 0.4 },
+    "cabinet-satoshi": { formality: 0.4, energy: 0.6, techiness: 0.4, expressiveness: 0.6 },
+    "syne-inter": { formality: 0.3, energy: 0.7, techiness: 0.4, expressiveness: 0.9 },
+    "bebas-dm": { formality: 0.2, energy: 0.9, techiness: 0.3, expressiveness: 1.0 },
+    "quicksand-karla": { formality: 0.3, energy: 0.4, techiness: 0.1, expressiveness: 0.3 },
+    "zilla-source": { formality: 0.7, energy: 0.3, techiness: 0.1, expressiveness: 0.5 },
+    "share-tech-mono": { formality: 0.4, energy: 0.3, techiness: 1.0, expressiveness: 0.2 },
+};
+
+// Industry personality targets — what axes matter for each industry
+const INDUSTRY_PERSONALITY: Record<string, {
+    formality: number;
+    energy: number;
+    techiness: number;
+    expressiveness: number;
+}> = {
+    tech: { formality: 0.5, energy: 0.5, techiness: 0.8, expressiveness: 0.3 },
+    saas: { formality: 0.6, energy: 0.4, techiness: 0.7, expressiveness: 0.3 },
+    startup: { formality: 0.3, energy: 0.8, techiness: 0.4, expressiveness: 0.5 },
+    editorial: { formality: 0.9, energy: 0.3, techiness: 0.0, expressiveness: 0.8 },
+    luxury: { formality: 1.0, energy: 0.2, techiness: 0.0, expressiveness: 0.7 },
+    creative: { formality: 0.2, energy: 0.8, techiness: 0.3, expressiveness: 1.0 },
+    agency: { formality: 0.3, energy: 0.7, techiness: 0.3, expressiveness: 0.9 },
+    wellness: { formality: 0.4, energy: 0.3, techiness: 0.1, expressiveness: 0.3 },
+    food: { formality: 0.6, energy: 0.4, techiness: 0.1, expressiveness: 0.5 },
+    fashion: { formality: 0.6, energy: 0.6, techiness: 0.1, expressiveness: 0.9 },
+    legal: { formality: 1.0, energy: 0.1, techiness: 0.1, expressiveness: 0.2 },
+    portfolio: { formality: 0.3, energy: 0.6, techiness: 0.3, expressiveness: 0.8 },
+};
+
+// Ideology shifts — how much each ideology nudges the target axes
+const IDEOLOGY_SHIFTS: Record<string, {
+    formality: number;
+    energy: number;
+    techiness: number;
+    expressiveness: number;
+}> = {
+    glassmorphism: { formality: 0.0, energy: 0.0, techiness: 0.1, expressiveness: 0.0 },
+    neobrutalism: { formality: -0.3, energy: 0.4, techiness: 0.0, expressiveness: 0.5 },
+    minimal: { formality: 0.2, energy: -0.2, techiness: 0.0, expressiveness: -0.2 },
+    colorblocking: { formality: -0.2, energy: 0.3, techiness: 0.0, expressiveness: 0.4 },
+    bento: { formality: 0.0, energy: 0.1, techiness: 0.2, expressiveness: 0.1 },
+    softpastel: { formality: -0.1, energy: -0.2, techiness: -0.2, expressiveness: -0.1 },
+    darkeditorial: { formality: 0.1, energy: 0.2, techiness: 0.0, expressiveness: 0.3 },
+    scifi: { formality: 0.0, energy: 0.0, techiness: 0.5, expressiveness: 0.0 },
+    claymorphism: { formality: -0.3, energy: 0.3, techiness: -0.2, expressiveness: 0.2 },
+    default: { formality: 0.0, energy: 0.0, techiness: 0.0, expressiveness: 0.0 },
+};
+
+function clamp(v: number): number {
+    return Math.max(0, Math.min(1, v));
+}
+
+function vectorDistance(
+    a: Record<string, number>,
+    b: Record<string, number>
+): number {
+    const keys = Object.keys(a);
+    const sumSq = keys.reduce((acc, k) => acc + Math.pow((a[k] ?? 0) - (b[k] ?? 0), 2), 0);
+    return Math.sqrt(sumSq / keys.length); // normalized 0-1
+}
+
+export function scoreFontPair(pair: FontPair, ctx: ScoringContext): number {
+    const personality = FONT_PERSONALITY[pair.id];
+    if (!personality) return 0;
+
+    const industryTarget = INDUSTRY_PERSONALITY[ctx.industryTag];
+    if (!industryTarget) return 50; // unknown industry — neutral score
+
+    const shifts = IDEOLOGY_SHIFTS[ctx.ideologyId] ?? IDEOLOGY_SHIFTS.default;
+
+    // Apply ideology shifts to the industry target
+    const adjustedTarget = {
+        formality: clamp(industryTarget.formality + shifts.formality),
+        energy: clamp(industryTarget.energy + shifts.energy),
+        techiness: clamp(industryTarget.techiness + shifts.techiness),
+        expressiveness: clamp(industryTarget.expressiveness + shifts.expressiveness),
+    };
+
+    // Distance from 0 (perfect) to ~1 (opposite)
+    const distance = vectorDistance(personality, adjustedTarget);
+
+    // Convert to 0-100 score — closer = higher score
+    return Math.round((1 - distance) * 100);
+}
+
+export function getTopPairs(
+    industryTag: string,
+    ideologyId: string,
+    count: number = 3
+): FontPair[] {
+    return [...FONT_PAIRS]
+        .map((pair) => ({ pair, score: scoreFontPair(pair, { industryTag, ideologyId }) }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, count)
+        .map((r) => r.pair);
+}
+</file>
+
+<file path=".gitignore">
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+</file>
+
+<file path="AGENTS.md">
+<!-- BEGIN:nextjs-agent-rules -->
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+<!-- END:nextjs-agent-rules -->
+</file>
+
+<file path="CLAUDE.md">
+@AGENTS.md
+</file>
+
+<file path="components.json">
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "base-nova",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "src/app/globals.css",
+    "baseColor": "neutral",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "iconLibrary": "lucide",
+  "rtl": false,
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  },
+  "menuColor": "default",
+  "menuAccent": "subtle",
+  "registries": {}
+}
+</file>
+
+<file path="eslint.config.mjs">
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTs from "eslint-config-next/typescript";
+
+const eslintConfig = defineConfig([
+  ...nextVitals,
+  ...nextTs,
+  // Override default ignores of eslint-config-next.
+  globalIgnores([
+    // Default ignores of eslint-config-next:
+    ".next/**",
+    "out/**",
+    "build/**",
+    "next-env.d.ts",
+  ]),
+]);
+
+export default eslintConfig;
+</file>
+
+<file path="next.config.ts">
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  /* config options here */
+};
+
+export default nextConfig;
+</file>
+
+<file path="postcss.config.mjs">
+const config = {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+};
+
+export default config;
+</file>
+
+<file path="public/file.svg">
+<svg fill="none" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M14.5 13.5V5.41a1 1 0 0 0-.3-.7L9.8.29A1 1 0 0 0 9.08 0H1.5v13.5A2.5 2.5 0 0 0 4 16h8a2.5 2.5 0 0 0 2.5-2.5m-1.5 0v-7H8v-5H3v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1M9.5 5V2.12L12.38 5zM5.13 5h-.62v1.25h2.12V5zm-.62 3h7.12v1.25H4.5zm.62 3h-.62v1.25h7.12V11z" clip-rule="evenodd" fill="#666" fill-rule="evenodd"/></svg>
+</file>
+
+<file path="public/globe.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><g clip-path="url(#a)"><path fill-rule="evenodd" clip-rule="evenodd" d="M10.27 14.1a6.5 6.5 0 0 0 3.67-3.45q-1.24.21-2.7.34-.31 1.83-.97 3.1M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m.48-1.52a7 7 0 0 1-.96 0H7.5a4 4 0 0 1-.84-1.32q-.38-.89-.63-2.08a40 40 0 0 0 3.92 0q-.25 1.2-.63 2.08a4 4 0 0 1-.84 1.31zm2.94-4.76q1.66-.15 2.95-.43a7 7 0 0 0 0-2.58q-1.3-.27-2.95-.43a18 18 0 0 1 0 3.44m-1.27-3.54a17 17 0 0 1 0 3.64 39 39 0 0 1-4.3 0 17 17 0 0 1 0-3.64 39 39 0 0 1 4.3 0m1.1-1.17q1.45.13 2.69.34a6.5 6.5 0 0 0-3.67-3.44q.65 1.26.98 3.1M8.48 1.5l.01.02q.41.37.84 1.31.38.89.63 2.08a40 40 0 0 0-3.92 0q.25-1.2.63-2.08a4 4 0 0 1 .85-1.32 7 7 0 0 1 .96 0m-2.75.4a6.5 6.5 0 0 0-3.67 3.44 29 29 0 0 1 2.7-.34q.31-1.83.97-3.1M4.58 6.28q-1.66.16-2.95.43a7 7 0 0 0 0 2.58q1.3.27 2.95.43a18 18 0 0 1 0-3.44m.17 4.71q-1.45-.12-2.69-.34a6.5 6.5 0 0 0 3.67 3.44q-.65-1.27-.98-3.1" fill="#666"/></g><defs><clipPath id="a"><path fill="#fff" d="M0 0h16v16H0z"/></clipPath></defs></svg>
+</file>
+
+<file path="public/next.svg">
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 394 80"><path fill="#000" d="M262 0h68.5v12.7h-27.2v66.6h-13.6V12.7H262V0ZM149 0v12.7H94v20.4h44.3v12.6H94v21h55v12.6H80.5V0h68.7zm34.3 0h-17.8l63.8 79.4h17.9l-32-39.7 32-39.6h-17.9l-23 28.6-23-28.6zm18.3 56.7-9-11-27.1 33.7h17.8l18.3-22.7z"/><path fill="#000" d="M81 79.3 17 0H0v79.3h13.6V17l50.2 62.3H81Zm252.6-.4c-1 0-1.8-.4-2.5-1s-1.1-1.6-1.1-2.6.3-1.8 1-2.5 1.6-1 2.6-1 1.8.3 2.5 1a3.4 3.4 0 0 1 .6 4.3 3.7 3.7 0 0 1-3 1.8zm23.2-33.5h6v23.3c0 2.1-.4 4-1.3 5.5a9.1 9.1 0 0 1-3.8 3.5c-1.6.8-3.5 1.3-5.7 1.3-2 0-3.7-.4-5.3-1s-2.8-1.8-3.7-3.2c-.9-1.3-1.4-3-1.4-5h6c.1.8.3 1.6.7 2.2s1 1.2 1.6 1.5c.7.4 1.5.5 2.4.5 1 0 1.8-.2 2.4-.6a4 4 0 0 0 1.6-1.8c.3-.8.5-1.8.5-3V45.5zm30.9 9.1a4.4 4.4 0 0 0-2-3.3 7.5 7.5 0 0 0-4.3-1.1c-1.3 0-2.4.2-3.3.5-.9.4-1.6 1-2 1.6a3.5 3.5 0 0 0-.3 4c.3.5.7.9 1.3 1.2l1.8 1 2 .5 3.2.8c1.3.3 2.5.7 3.7 1.2a13 13 0 0 1 3.2 1.8 8.1 8.1 0 0 1 3 6.5c0 2-.5 3.7-1.5 5.1a10 10 0 0 1-4.4 3.5c-1.8.8-4.1 1.2-6.8 1.2-2.6 0-4.9-.4-6.8-1.2-2-.8-3.4-2-4.5-3.5a10 10 0 0 1-1.7-5.6h6a5 5 0 0 0 3.5 4.6c1 .4 2.2.6 3.4.6 1.3 0 2.5-.2 3.5-.6 1-.4 1.8-1 2.4-1.7a4 4 0 0 0 .8-2.4c0-.9-.2-1.6-.7-2.2a11 11 0 0 0-2.1-1.4l-3.2-1-3.8-1c-2.8-.7-5-1.7-6.6-3.2a7.2 7.2 0 0 1-2.4-5.7 8 8 0 0 1 1.7-5 10 10 0 0 1 4.3-3.5c2-.8 4-1.2 6.4-1.2 2.3 0 4.4.4 6.2 1.2 1.8.8 3.2 2 4.3 3.4 1 1.4 1.5 3 1.5 5h-5.8z"/></svg>
+</file>
+
+<file path="public/vercel.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1155 1000"><path d="m577.3 0 577.4 1000H0z" fill="#fff"/></svg>
+</file>
+
+<file path="public/window.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" clip-rule="evenodd" d="M1.5 2.5h13v10a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1zM0 1h16v11.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 0 12.5zm3.75 4.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5M7 4.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0m1.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5" fill="#666"/></svg>
+</file>
+
+<file path="README.md">
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+
+## Getting Started
+
+First, run the development server:
+
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## Learn More
+
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+</file>
+
 <file path="src/components/preview/PreviewCanvas.tsx">
 "use client";
 
+import { useState } from "react";
 import { useThemeStore } from "@/lib/store/theme.store";
+import { serializeTheme } from "@/lib/store/url-sync";
 import { Button } from "@/components/ui/button";
 import {
     Card,
@@ -104,10 +1539,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import {
     Bell,
+    Check,
     CreditCard,
     LayoutDashboard,
     Moon,
     Settings,
+    Share2,
     Sun,
     User,
     TrendingUp,
@@ -344,6 +1781,16 @@ export function PreviewCanvas() {
     const toggleDark = useThemeStore((s) => s.toggleDark);
     const primaryHex = useThemeStore((s) => s.current.primaryHex);
     const harmonyType = useThemeStore((s) => s.current.harmonyType);
+    const current = useThemeStore((s) => s.current);
+    const [copied, setCopied] = useState(false);
+
+    const handleShare = () => {
+        const encoded = serializeTheme(current);
+        const url = `${window.location.origin}?theme=${encoded}`;
+        navigator.clipboard.writeText(url);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
 
     return (
         <div className="flex h-full flex-col">
@@ -360,19 +1807,32 @@ export function PreviewCanvas() {
                         {harmonyType}
                     </Badge>
                 </div>
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={toggleDark}
-                    title="Toggle dark mode"
-                >
-                    {isDark ? (
-                        <Sun className="h-4 w-4" />
-                    ) : (
-                        <Moon className="h-4 w-4" />
-                    )}
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={handleShare}
+                        title="Copy share link"
+                    >
+                        {copied
+                            ? <Check className="h-4 w-4 text-primary" />
+                            : <Share2 className="h-4 w-4" />}
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={toggleDark}
+                        title="Toggle dark mode"
+                    >
+                        {isDark ? (
+                            <Sun className="h-4 w-4" />
+                        ) : (
+                            <Moon className="h-4 w-4" />
+                        )}
+                    </Button>
+                </div>
             </div>
 
             {/* Canvas */}
@@ -400,65 +1860,127 @@ export function PreviewCanvas() {
 
 import { useEffect } from "react";
 import { useThemeStore } from "@/lib/store/theme.store";
+import { applyIdeology } from "@/lib/ideology/blend";
 import type { ShadcnTokenSet } from "@/lib/schema/theme-config.schema";
 
-function injectTokens(tokens: ShadcnTokenSet, isDark: boolean) {
+function injectIdeologyStyles(ideologyId: string, tension: number) {
+    const styleId = "ideology-overrides";
+    let el = document.getElementById(styleId) as HTMLStyleElement | null;
+    if (!el) {
+        el = document.createElement("style");
+        el.id = styleId;
+        document.head.appendChild(el);
+    }
+
+    if (ideologyId === "glassmorphism" && tension > 0.1) {
+        const opacity = 0.4 + (1 - tension) * 0.4; // tension 1 = 0.4 opacity, tension 0 = 0.8
+        el.textContent = `
+      [data-slot="card"] {
+        background-color: color-mix(in oklch, var(--card) ${Math.round(opacity * 100)}%, transparent) !important;
+        backdrop-filter: blur(${Math.round(tension * 16)}px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(${Math.round(tension * 16)}px) saturate(180%) !important;
+        border: 1px solid color-mix(in oklch, var(--border) 60%, transparent) !important;
+      }
+      body, [data-slot="tabs-content"] {
+        background-image: none;
+      }
+    `;
+    } else {
+        el.textContent = "";
+    }
+}
+
+function injectTokens(tokens: ShadcnTokenSet, isDark: boolean, ideologyCss: Record<string, string>) {
     const root = document.documentElement;
 
-    if (!isDark) {
-        root.classList.remove("dark");
-        root.style.setProperty("--background", tokens.background);
-        root.style.setProperty("--foreground", tokens.foreground);
-        root.style.setProperty("--card", tokens.card);
-        root.style.setProperty("--card-foreground", tokens.cardForeground);
-        root.style.setProperty("--popover", tokens.popover);
-        root.style.setProperty("--popover-foreground", tokens.popoverForeground);
-        root.style.setProperty("--primary", tokens.primary);
-        root.style.setProperty("--primary-foreground", tokens.primaryForeground);
-        root.style.setProperty("--secondary", tokens.secondary);
-        root.style.setProperty("--secondary-foreground", tokens.secondaryForeground);
-        root.style.setProperty("--muted", tokens.muted);
-        root.style.setProperty("--muted-foreground", tokens.mutedForeground);
-        root.style.setProperty("--accent", tokens.accent);
-        root.style.setProperty("--accent-foreground", tokens.accentForeground);
-        root.style.setProperty("--destructive", tokens.destructive);
-        root.style.setProperty("--destructive-foreground", tokens.destructiveForeground);
-        root.style.setProperty("--border", tokens.border);
-        root.style.setProperty("--input", tokens.input);
-        root.style.setProperty("--ring", tokens.ring);
-        root.style.setProperty("--radius", tokens.radius);
-    } else {
-        root.classList.add("dark");
-        root.style.setProperty("--background", tokens.darkBackground);
-        root.style.setProperty("--foreground", tokens.darkForeground);
-        root.style.setProperty("--card", tokens.darkCard);
-        root.style.setProperty("--card-foreground", tokens.darkCardForeground);
-        root.style.setProperty("--popover", tokens.darkPopover);
-        root.style.setProperty("--popover-foreground", tokens.darkPopoverForeground);
-        root.style.setProperty("--primary", tokens.darkPrimary);
-        root.style.setProperty("--primary-foreground", tokens.darkPrimaryForeground);
-        root.style.setProperty("--secondary", tokens.darkSecondary);
-        root.style.setProperty("--secondary-foreground", tokens.darkSecondaryForeground);
-        root.style.setProperty("--muted", tokens.darkMuted);
-        root.style.setProperty("--muted-foreground", tokens.darkMutedForeground);
-        root.style.setProperty("--accent", tokens.darkAccent);
-        root.style.setProperty("--accent-foreground", tokens.darkAccentForeground);
-        root.style.setProperty("--destructive", tokens.darkDestructive);
-        root.style.setProperty("--destructive-foreground", tokens.darkDestructiveForeground);
-        root.style.setProperty("--border", tokens.darkBorder);
-        root.style.setProperty("--input", tokens.darkInput);
-        root.style.setProperty("--ring", tokens.darkRing);
-        root.style.setProperty("--radius", tokens.radius);
-    }
+    const t = isDark ? {
+        background: tokens.darkBackground,
+        foreground: tokens.darkForeground,
+        card: tokens.darkCard,
+        cardForeground: tokens.darkCardForeground,
+        popover: tokens.darkPopover,
+        popoverForeground: tokens.darkPopoverForeground,
+        primary: tokens.darkPrimary,
+        primaryForeground: tokens.darkPrimaryForeground,
+        secondary: tokens.darkSecondary,
+        secondaryForeground: tokens.darkSecondaryForeground,
+        muted: tokens.darkMuted,
+        mutedForeground: tokens.darkMutedForeground,
+        accent: tokens.darkAccent,
+        accentForeground: tokens.darkAccentForeground,
+        destructive: tokens.darkDestructive,
+        destructiveForeground: tokens.darkDestructiveForeground,
+        border: tokens.darkBorder,
+        input: tokens.darkInput,
+        ring: tokens.darkRing,
+    } : {
+        background: tokens.background,
+        foreground: tokens.foreground,
+        card: tokens.card,
+        cardForeground: tokens.cardForeground,
+        popover: tokens.popover,
+        popoverForeground: tokens.popoverForeground,
+        primary: tokens.primary,
+        primaryForeground: tokens.primaryForeground,
+        secondary: tokens.secondary,
+        secondaryForeground: tokens.secondaryForeground,
+        muted: tokens.muted,
+        mutedForeground: tokens.mutedForeground,
+        accent: tokens.accent,
+        accentForeground: tokens.accentForeground,
+        destructive: tokens.destructive,
+        destructiveForeground: tokens.destructiveForeground,
+        border: tokens.border,
+        input: tokens.input,
+        ring: tokens.ring,
+    };
+
+    if (isDark) root.classList.add("dark");
+    else root.classList.remove("dark");
+
+    // Token vars
+    root.style.setProperty("--background", t.background);
+    root.style.setProperty("--foreground", t.foreground);
+    root.style.setProperty("--card", t.card);
+    root.style.setProperty("--card-foreground", t.cardForeground);
+    root.style.setProperty("--popover", t.popover);
+    root.style.setProperty("--popover-foreground", t.popoverForeground);
+    root.style.setProperty("--primary", t.primary);
+    root.style.setProperty("--primary-foreground", t.primaryForeground);
+    root.style.setProperty("--secondary", t.secondary);
+    root.style.setProperty("--secondary-foreground", t.secondaryForeground);
+    root.style.setProperty("--muted", t.muted);
+    root.style.setProperty("--muted-foreground", t.mutedForeground);
+    root.style.setProperty("--accent", t.accent);
+    root.style.setProperty("--accent-foreground", t.accentForeground);
+    root.style.setProperty("--destructive", t.destructive);
+    root.style.setProperty("--destructive-foreground", t.destructiveForeground);
+    root.style.setProperty("--border", t.border);
+    root.style.setProperty("--input", t.input);
+    root.style.setProperty("--ring", t.ring);
+    root.style.setProperty("--radius", tokens.radius);
+    root.style.setProperty("--radius-sm", `calc(${tokens.radius} - 4px)`);
+    root.style.setProperty("--radius-md", tokens.radius);
+    root.style.setProperty("--radius-lg", `calc(${tokens.radius} + 2px)`);
+    root.style.setProperty("--radius-xl", `calc(${tokens.radius} + 4px)`);
+
+    // Ideology CSS overrides
+    Object.entries(ideologyCss).forEach(([key, value]) => {
+        root.style.setProperty(key, value);
+    });
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const tokens = useThemeStore((s) => s.current.tokens);
     const isDark = useThemeStore((s) => s.isDark);
+    const ideologyId = useThemeStore((s) => s.current.ideologyId);
+    const ideologyTension = useThemeStore((s) => s.current.ideologyTension);
 
     useEffect(() => {
-        injectTokens(tokens, isDark);
-    }, [tokens, isDark]);
+        const { css } = applyIdeology(tokens, ideologyId, ideologyTension);
+        injectTokens(tokens, isDark, css);
+        injectIdeologyStyles(ideologyId, ideologyTension);
+    }, [tokens, isDark, ideologyId, ideologyTension]);
 
     return <>{children}</>;
 }
@@ -472,7 +1994,8 @@ import { useThemeStore } from "@/lib/store/theme.store";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Lock, Unlock, Shuffle } from "lucide-react";
+import { Lock, Unlock, Shuffle, ChevronDown } from "lucide-react";
+import { useColorName } from "@/hooks/useColorName";
 
 export function ColorInput() {
     const primaryHex = useThemeStore((s) => s.current.primaryHex);
@@ -483,6 +2006,8 @@ export function ColorInput() {
 
     const [inputValue, setInputValue] = useState(primaryHex);
     const [error, setError] = useState(false);
+    const [open, setOpen] = useState(true);
+    const colorName = useColorName(primaryHex);
 
     const handleHexInput = (val: string) => {
         setInputValue(val);
@@ -503,92 +2028,77 @@ export function ColorInput() {
 
     return (
         <div className="space-y-3">
+            {/* Header row */}
             <div className="flex items-center justify-between">
-                <Label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                    Primary Color
-                </Label>
+                <button
+                    onClick={() => setOpen(!open)}
+                    className="flex items-center gap-1.5 group"
+                >
+                    <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                        Primary Color
+                    </span>
+                    <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${open ? "rotate-0" : "-rotate-90"}`} />
+                </button>
                 <div className="flex items-center gap-1">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
+                    <Button variant="ghost" size="icon" className="h-7 w-7"
                         onClick={() => toggleLock("color")}
                         title={colorLocked ? "Unlock color" : "Lock color"}
                     >
-                        {colorLocked ? (
-                            <Lock className="h-3.5 w-3.5 text-primary" />
-                        ) : (
-                            <Unlock className="h-3.5 w-3.5 text-muted-foreground" />
-                        )}
+                        {colorLocked
+                            ? <Lock className="h-3.5 w-3.5 text-primary" />
+                            : <Unlock className="h-3.5 w-3.5 text-muted-foreground" />}
                     </Button>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={randomizeUnlocked}
-                        title="Randomize"
+                    <Button variant="ghost" size="icon" className="h-7 w-7"
+                        onClick={randomizeUnlocked} title="Randomize"
                     >
                         <Shuffle className="h-3.5 w-3.5 text-muted-foreground" />
                     </Button>
                 </div>
             </div>
 
-            <div className="flex items-center gap-3">
-                {/* Native color picker */}
-                <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md border"
-                    style={{ borderColor: 'var(--border)' }}>
-                    <input
-                        type="color"
-                        value={primaryHex}
-                        onChange={(e) => handleColorPicker(e.target.value)}
-                        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                    />
-                    <div
-                        className="h-full w-full rounded-md"
-                        style={{ backgroundColor: primaryHex }}
-                    />
+            {open && (
+                <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md border"
+                            style={{ borderColor: "var(--border)" }}>
+                            <input
+                                type="color"
+                                value={primaryHex}
+                                onChange={(e) => handleColorPicker(e.target.value)}
+                                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                            />
+                            <div className="h-full w-full rounded-md" style={{ backgroundColor: primaryHex }} />
+                        </div>
+                        <Input
+                            value={inputValue}
+                            onChange={(e) => handleHexInput(e.target.value)}
+                            placeholder="#6d28d9"
+                            className={`font-mono text-sm ${error ? "border-destructive" : ""}`}
+                            maxLength={7}
+                        />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">{colorName}</span>
+                        {error && <span className="text-xs text-destructive">Invalid hex</span>}
+                    </div>
+
+                    <div className="flex gap-1.5">
+                        {["#6d28d9", "#2563eb", "#059669", "#d97706", "#dc2626", "#db2777"].map((color) => (
+                            <button
+                                key={color}
+                                onClick={() => { setInputValue(color); setError(false); setPrimaryHex(color); }}
+                                className="h-6 w-6 rounded-full border-2 transition-transform hover:scale-110"
+                                style={{
+                                    backgroundColor: color,
+                                    borderColor: primaryHex === color ? "white" : "transparent",
+                                    outline: primaryHex === color ? `2px solid ${color}` : "none",
+                                }}
+                            />
+                        ))}
+                    </div>
                 </div>
-
-                {/* Hex input */}
-                <Input
-                    value={inputValue}
-                    onChange={(e) => handleHexInput(e.target.value)}
-                    placeholder="#6d28d9"
-                    className={`font-mono text-sm ${error ? "border-destructive focus-visible:ring-destructive" : ""
-                        }`}
-                    maxLength={7}
-                />
-            </div>
-
-            {error && (
-                <p className="text-xs text-destructive">
-                    Enter a valid hex color (e.g. #6d28d9)
-                </p>
             )}
-
-            {/* Color preview swatch row */}
-            <div className="flex gap-1.5 pt-1">
-                {[
-                    "#6d28d9", "#2563eb", "#059669",
-                    "#d97706", "#dc2626", "#db2777",
-                ].map((color) => (
-                    <button
-                        key={color}
-                        onClick={() => {
-                            setInputValue(color);
-                            setError(false);
-                            setPrimaryHex(color);
-                        }}
-                        className="h-6 w-6 rounded-full border-2 transition-transform hover:scale-110"
-                        style={{
-                            backgroundColor: color,
-                            borderColor: primaryHex === color ? "white" : "transparent",
-                            outline: primaryHex === color ? `2px solid ${color}` : "none",
-                        }}
-                        title={color}
-                    />
-                ))}
-            </div>
         </div>
     );
 }
@@ -597,12 +2107,11 @@ export function ColorInput() {
 <file path="src/components/studio/HarmonyPicker.tsx">
 "use client";
 
+import { useState } from "react";
 import { useThemeStore } from "@/lib/store/theme.store";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Lock, Unlock } from "lucide-react";
+import { Lock, Unlock, ChevronDown } from "lucide-react";
 import type { HarmonyType } from "@/lib/schema/theme-config.schema";
-import { hexToOklch } from "@/lib/harmony/oklch";
 
 const HARMONIES: { value: HarmonyType; label: string; description: string }[] = [
     { value: "analogous", label: "Analogous", description: "Calm, natural" },
@@ -618,58 +2127,166 @@ export function HarmonyPicker() {
     const harmonyLocked = useThemeStore((s) => s.current.locks.harmony);
     const setHarmonyType = useThemeStore((s) => s.setHarmonyType);
     const toggleLock = useThemeStore((s) => s.toggleLock);
+    const [open, setOpen] = useState(false);
 
     return (
         <div className="space-y-3">
             <div className="flex items-center justify-between">
-                <Label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                    Harmony Type
-                </Label>
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
+                <button onClick={() => setOpen(!open)} className="flex items-center gap-1.5">
+                    <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                        Harmony Type
+                    </span>
+                    <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${open ? "rotate-0" : "-rotate-90"}`} />
+                </button>
+                <Button variant="ghost" size="icon" className="h-7 w-7"
                     onClick={() => toggleLock("harmony")}
                     title={harmonyLocked ? "Unlock harmony" : "Lock harmony"}
                 >
-                    {harmonyLocked ? (
-                        <Lock className="h-3.5 w-3.5 text-primary" />
-                    ) : (
-                        <Unlock className="h-3.5 w-3.5 text-muted-foreground" />
-                    )}
+                    {harmonyLocked
+                        ? <Lock className="h-3.5 w-3.5 text-primary" />
+                        : <Unlock className="h-3.5 w-3.5 text-muted-foreground" />}
                 </Button>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-                {HARMONIES.map((h) => (
-                    <button
-                        key={h.value}
-                        onClick={() => setHarmonyType(h.value)}
-                        className={`rounded-md border px-3 py-2 text-left transition-all hover:border-primary/50 ${harmonyType === h.value
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border bg-card text-card-foreground"
-                            }`}
-                    >
-                        <div className="text-xs font-semibold">{h.label}</div>
-                        <div className="text-xs text-muted-foreground">{h.description}</div>
-                    </button>
-                ))}
-            </div>
+            {open && (
+                <div className="grid grid-cols-2 gap-2">
+                    {HARMONIES.map((h) => (
+                        <button
+                            key={h.value}
+                            onClick={() => setHarmonyType(h.value)}
+                            className={`rounded-md border px-3 py-2 text-left transition-all hover:border-primary/50 ${harmonyType === h.value
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-border bg-card text-card-foreground"
+                                }`}
+                        >
+                            <div className="text-xs font-semibold">{h.label}</div>
+                            <div className="text-xs text-muted-foreground">{h.description}</div>
+                        </button>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
+</file>
 
-export function hexToOklchCss(hex: string): string {
-    const oklch = hexToOklch(hex);
-    return `oklch(${oklch.l.toFixed(4)} ${oklch.c.toFixed(4)} ${(oklch.h ?? 0).toFixed(2)})`;
+<file path="src/components/studio/RadiusSlider.tsx">
+"use client";
+
+import { useState } from "react";
+import { useThemeStore } from "@/lib/store/theme.store";
+import { Button } from "@/components/ui/button";
+import { Lock, Unlock, ChevronDown, RotateCcw } from "lucide-react";
+
+const RADIUS_PRESETS = [
+    { label: "None", value: 0 },
+    { label: "SM", value: 4 },
+    { label: "MD", value: 8 },
+    { label: "LG", value: 16 },
+    { label: "Full", value: 9999 },
+];
+
+export function RadiusSlider() {
+    const radiusOverride = useThemeStore((s) => s.current.radiusOverride);
+    const radiusLocked = useThemeStore((s) => s.current.locks.radius);
+    const tokens = useThemeStore((s) => s.current.tokens);
+    const setRadiusOverride = useThemeStore((s) => s.setRadiusOverride);
+    const toggleLock = useThemeStore((s) => s.toggleLock);
+    const [open, setOpen] = useState(true);
+
+    // Actual applied radius — from ideology if no override
+    const appliedRadius = parseInt(tokens.radius) || 8;
+    // What the slider shows — override if set, otherwise ideology value
+    const sliderValue = radiusOverride !== null ? radiusOverride : appliedRadius;
+    const isOverridden = radiusOverride !== null;
+
+    return (
+        <div className="space-y-3">
+            <div className="flex items-center justify-between">
+                <button onClick={() => setOpen(!open)} className="flex items-center gap-1.5">
+                    <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                        Border Radius
+                    </span>
+                    <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${open ? "rotate-0" : "-rotate-90"}`} />
+                </button>
+                <div className="flex items-center gap-1">
+                    {/* Reset to ideology — only shown when manually overridden */}
+                    {isOverridden && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            onClick={() => setRadiusOverride(null)}
+                            title="Reset to ideology default"
+                        >
+                            <RotateCcw className="h-3 w-3 text-muted-foreground" />
+                        </Button>
+                    )}
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => toggleLock("radius")}
+                    >
+                        {radiusLocked
+                            ? <Lock className="h-3.5 w-3.5 text-primary" />
+                            : <Unlock className="h-3.5 w-3.5 text-muted-foreground" />}
+                    </Button>
+                </div>
+            </div>
+
+            {open && (
+                <div className="space-y-3">
+                    {/* Ideology source indicator */}
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">
+                            {isOverridden
+                                ? "Manual override"
+                                : "Set by ideology"}
+                        </span>
+                        <span className="font-mono text-xs text-muted-foreground">
+                            {sliderValue === 9999 ? "pill" : `${sliderValue}px`}
+                        </span>
+                    </div>
+
+                    {/* Presets */}
+                    <div className="flex gap-2">
+                        {RADIUS_PRESETS.map((p) => (
+                            <button
+                                key={p.label}
+                                onClick={() => setRadiusOverride(p.value)}
+                                className={`flex-1 rounded border py-1.5 text-xs font-medium transition-all ${sliderValue === p.value
+                                    ? "border-primary bg-primary/10 text-primary"
+                                    : "border-border bg-card text-muted-foreground hover:border-primary/50"
+                                    }`}
+                            >
+                                {p.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Slider */}
+                    <input
+                        type="range"
+                        min={0}
+                        max={24}
+                        value={Math.min(sliderValue, 24)}
+                        onChange={(e) => setRadiusOverride(Number(e.target.value))}
+                        className="w-full accent-primary"
+                    />
+                </div>
+            )}
+        </div>
+    );
 }
 </file>
 
 <file path="src/components/studio/TokenDisplay.tsx">
 "use client";
 
+import { useState } from "react";
 import { useThemeStore } from "@/lib/store/theme.store";
-import { Label } from "@/components/ui/label";
+import { ChevronDown } from "lucide-react";
 import type { ShadcnTokenSet } from "@/lib/schema/theme-config.schema";
 
 const LIGHT_TOKENS: { key: keyof ShadcnTokenSet; label: string }[] = [
@@ -692,69 +2309,60 @@ const LIGHT_TOKENS: { key: keyof ShadcnTokenSet; label: string }[] = [
 
 function tokenValueToHex(value: string): string {
     try {
-        // Handle oklch() format: oklch(0.9506 0.0... 123.45)
         if (value.startsWith("oklch(")) {
             const inner = value.replace("oklch(", "").replace(")", "");
             const parts = inner.trim().split(/\s+/);
             const l = parseFloat(parts[0]);
             const c = parseFloat(parts[1]);
             const h = parseFloat(parts[2]) || 0;
-            // Simple oklch to hex approximation via HSL
-            const hDeg = h;
             const s = Math.min(c * 2.5, 1);
-            const lNorm = l;
-            const a = s * Math.min(lNorm, 1 - lNorm);
+            const a = s * Math.min(l, 1 - l);
             const f = (n: number) => {
-                const k = (n + hDeg / 30) % 12;
-                const color = lNorm - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+                const k = (n + h / 30) % 12;
+                const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
                 return Math.round(255 * color).toString(16).padStart(2, "0");
             };
             return `#${f(0)}${f(8)}${f(4)}`;
         }
         return "#888888";
-    } catch {
-        return "#888888";
-    }
+    } catch { return "#888888"; }
 }
 
 export function TokenDisplay() {
     const tokens = useThemeStore((s) => s.current.tokens);
     const isDark = useThemeStore((s) => s.isDark);
+    const [open, setOpen] = useState(false);
 
     return (
         <div className="space-y-3">
-            <Label className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                Generated Tokens
-            </Label>
+            <button onClick={() => setOpen(!open)} className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                    Generated Tokens
+                </span>
+                <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${open ? "rotate-0" : "-rotate-90"}`} />
+            </button>
 
-            <div className="space-y-1 rounded-md border border-border bg-card p-2">
-                {LIGHT_TOKENS.map(({ key, label }) => {
-                    const value = tokens[key] as string;
-                    const darkKey = `dark${key.charAt(0).toUpperCase()}${key.slice(1)}` as keyof ShadcnTokenSet;
-                    const displayValue = isDark && tokens[darkKey]
-                        ? (tokens[darkKey] as string)
-                        : value;
-                    const hexApprox = tokenValueToHex(displayValue);
+            {open && (
+                <div className="space-y-1 rounded-md border border-border bg-card p-2">
+                    {LIGHT_TOKENS.map(({ key, label }) => {
+                        const value = tokens[key] as string;
+                        const darkKey = `dark${key.charAt(0).toUpperCase()}${key.slice(1)}` as keyof ShadcnTokenSet;
+                        const displayValue = isDark && tokens[darkKey]
+                            ? (tokens[darkKey] as string)
+                            : value;
+                        const hexApprox = tokenValueToHex(displayValue);
 
-                    return (
-                        <div
-                            key={key}
-                            className="flex items-center gap-2 rounded px-1.5 py-1 hover:bg-muted/50"
-                        >
-                            <div
-                                className="h-4 w-4 shrink-0 rounded-sm border border-border"
-                                style={{ backgroundColor: hexApprox }}
-                            />
-                            <span className="w-36 font-mono text-xs text-muted-foreground">
-                                --{label}
-                            </span>
-                            <span className="truncate font-mono text-xs text-foreground">
-                                {displayValue}
-                            </span>
-                        </div>
-                    );
-                })}
-            </div>
+                        return (
+                            <div key={key} className="flex items-center gap-2 rounded px-1.5 py-1 hover:bg-muted/50">
+                                <div className="h-4 w-4 shrink-0 rounded-sm border border-border"
+                                    style={{ backgroundColor: hexApprox }} />
+                                <span className="w-36 font-mono text-xs text-muted-foreground">--{label}</span>
+                                <span className="truncate font-mono text-xs text-foreground">{displayValue}</span>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
         </div>
     );
 }
@@ -815,6 +2423,69 @@ function Badge({
 export { Badge, badgeVariants }
 </file>
 
+<file path="src/components/ui/button.tsx">
+"use client"
+
+import { Button as ButtonPrimitive } from "@base-ui/react/button"
+import { cva, type VariantProps } from "class-variance-authority"
+
+import { cn } from "@/lib/utils"
+
+const buttonVariants = cva(
+  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
+        outline:
+          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+        secondary:
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+        ghost:
+          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+        destructive:
+          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+        link: "text-primary underline-offset-4 hover:underline",
+      },
+      size: {
+        default:
+          "h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+        xs: "h-6 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
+        sm: "h-7 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
+        lg: "h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+        icon: "size-8",
+        "icon-xs":
+          "size-6 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",
+        "icon-sm":
+          "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
+        "icon-lg": "size-9",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  }
+)
+
+function Button({
+  className,
+  variant = "default",
+  size = "default",
+  ...props
+}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+  return (
+    <ButtonPrimitive
+      data-slot="button"
+      className={cn(buttonVariants({ variant, size, className }))}
+      {...props}
+    />
+  )
+}
+
+export { Button, buttonVariants }
+</file>
+
 <file path="src/components/ui/card.tsx">
 import * as React from "react"
 
@@ -830,7 +2501,7 @@ function Card({
       data-slot="card"
       data-size={size}
       className={cn(
-        "group/card flex flex-col gap-4 overflow-hidden rounded-xl bg-card py-4 text-sm text-card-foreground ring-1 ring-foreground/10 has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl",
+        "group/card flex flex-col gap-4 overflow-hidden rounded-xl bg-card py-4 text-sm text-card-foreground border border-border has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl",
         className
       )}
       {...props}
@@ -1488,139 +3159,172 @@ import type { ShadcnTokenSet } from "../schema/theme-config.schema";
 
 function deriveForeground(backgroundHex: string): string {
     const oklch = hexToOklch(backgroundHex);
-    const fgOklch =
-        oklch.l > 0.5
-            ? { l: 0.15, c: oklch.c * 0.3, h: oklch.h }
-            : { l: 0.97, c: oklch.c * 0.1, h: oklch.h };
+    const fgOklch = oklch.l > 0.5
+        ? { l: 0.13, c: 0.01, h: oklch.h }
+        : { l: 0.98, c: 0.01, h: oklch.h };
     const fg = oklchToHex(fgOklch);
     return enforceMinContrast(fg, backgroundHex, 4.5);
 }
 
 function deriveDarkBackground(hex: string): string {
     const oklch = hexToOklch(hex);
-    return oklchToHex({ l: 0.1, c: Math.min(oklch.c * 0.3, 0.02), h: oklch.h });
+    return oklchToHex({ l: 0.13, c: Math.min(oklch.c * 0.15, 0.015), h: oklch.h });
 }
 
 export function paletteToShadcnTokens(
     palette: HarmonyPalette,
     radiusPx: number = 8
 ): ShadcnTokenSet {
+
     // ── Light mode ──────────────────────────────────────────────
-    const background = palette.background;
-    const foreground = deriveForeground(background);
-    const card = palette.surface;
-    const cardForeground = deriveForeground(card);
-    const popover = palette.surface;
-    const popoverForeground = deriveForeground(popover);
-    const primary = palette.primary;
-    const primaryForeground = enforceMinContrast(deriveForeground(primary), primary, 4.5);
 
-    const secondaryOklch = hexToOklch(palette.secondary);
-    const secondaryLight = oklchToHex(shiftLightness(shiftChroma(secondaryOklch, -secondaryOklch.c + 0.04), 0.85));
-    const secondary = secondaryLight;
-    const secondaryForeground = deriveForeground(secondary);
-
-    const mutedOklch = hexToOklch(palette.muted);
-    const mutedLight = oklchToHex({ ...mutedOklch, l: 0.94, c: 0.02 });
-    const muted = mutedLight;
-    const mutedForeground = enforceMinContrast(
-        oklchToHex({ ...mutedOklch, l: 0.45, c: 0.06 }), muted, 4.5
+    // Background: very light, low chroma tint of primary hue
+    const primaryOklch = hexToOklch(palette.primary);
+    const backgroundHex = oklchToHex({ l: 0.98, c: 0.008, h: primaryOklch.h });
+    const foregroundHex = enforceMinContrast(
+        oklchToHex({ l: 0.12, c: 0.01, h: primaryOklch.h }),
+        backgroundHex, 4.5
     );
 
+    // Card: slightly off-white with hint of hue
+    const cardHex = oklchToHex({ l: 1.0, c: 0.004, h: primaryOklch.h });
+    const cardForegroundHex = foregroundHex;
+
+    // Popover same as card
+    const popoverHex = cardHex;
+    const popoverForegroundHex = foregroundHex;
+
+    // Primary: full brand color
+    const primaryHex = palette.primary;
+    const primaryForegroundHex = enforceMinContrast(
+        oklchToHex({ l: 0.99, c: 0.005, h: primaryOklch.h }),
+        primaryHex, 4.5
+    );
+
+    // Secondary: very light version of secondary hue — visible but subtle
+    const secondaryOklch = hexToOklch(palette.secondary);
+    const secondaryHex = oklchToHex({ l: 0.92, c: 0.06, h: secondaryOklch.h });
+    const secondaryForegroundHex = enforceMinContrast(
+        oklchToHex({ l: 0.25, c: 0.08, h: secondaryOklch.h }),
+        secondaryHex, 4.5
+    );
+
+    // Muted: very desaturated background-adjacent
+    const mutedHex = oklchToHex({ l: 0.94, c: 0.012, h: primaryOklch.h });
+    const mutedForegroundHex = enforceMinContrast(
+        oklchToHex({ l: 0.45, c: 0.02, h: primaryOklch.h }),
+        mutedHex, 4.5
+    );
+
+    // Accent: light version of accent hue — distinct from secondary
     const accentOklch = hexToOklch(palette.accent);
-    const accentLight = oklchToHex(shiftLightness(shiftChroma(accentOklch, -accentOklch.c + 0.04), 0.88));
-    const accent = accentLight;
-    const accentForeground = deriveForeground(accent);
+    const accentHex = oklchToHex({ l: 0.90, c: 0.07, h: accentOklch.h });
+    const accentForegroundHex = enforceMinContrast(
+        oklchToHex({ l: 0.22, c: 0.08, h: accentOklch.h }),
+        accentHex, 4.5
+    );
 
-    const destructive = palette.destructive;
-    const destructiveForeground = enforceMinContrast("#ffffff", destructive, 4.5);
+    // Destructive: always red-range
+    const destructiveHex = oklchToHex({ l: 0.55, c: 0.22, h: 25 });
+    const destructiveForegroundHex = enforceMinContrast("#ffffff", destructiveHex, 4.5);
 
-    const borderOklch = hexToOklch(background);
-    const border = oklchToHex({ ...borderOklch, l: borderOklch.l - 0.08, c: 0.02 });
-    const input = oklchToHex({ ...borderOklch, l: borderOklch.l - 0.05, c: 0.01 });
-    const ring = palette.primary;
+    // Border/Input: subtle, slightly darker than background
+    const borderHex = oklchToHex({ l: 0.88, c: 0.012, h: primaryOklch.h });
+    const inputHex = oklchToHex({ l: 0.91, c: 0.008, h: primaryOklch.h });
+    const ringHex = palette.primary;
 
     // ── Dark mode ────────────────────────────────────────────────
-    const darkBg = deriveDarkBackground(palette.primary);
-    const darkBackground = darkBg;
-    const darkForeground = enforceMinContrast(
-        oklchToHex({ l: 0.95, c: 0.01, h: hexToOklch(palette.primary).h }), darkBg, 4.5
+
+    const darkBgHex = deriveDarkBackground(palette.primary);
+    const darkBgOklch = hexToOklch(darkBgHex);
+
+    const darkForegroundHex = enforceMinContrast(
+        oklchToHex({ l: 0.95, c: 0.01, h: primaryOklch.h }),
+        darkBgHex, 4.5
     );
 
-    const darkCardOklch = hexToOklch(darkBg);
-    const darkCard = oklchToHex({ ...darkCardOklch, l: darkCardOklch.l + 0.05 });
-    const darkCardForeground = darkForeground;
-    const darkPopover = darkCard;
-    const darkPopoverForeground = darkForeground;
+    const darkCardHex = oklchToHex({ ...darkBgOklch, l: darkBgOklch.l + 0.06 });
+    const darkCardForegroundHex = darkForegroundHex;
+    const darkPopoverHex = darkCardHex;
+    const darkPopoverForegroundHex = darkForegroundHex;
 
-    const primaryOklch = hexToOklch(palette.primary);
-    const darkPrimary = oklchToHex({
-        ...primaryOklch,
-        l: Math.min(primaryOklch.l + 0.1, 0.85),
-        c: Math.min(primaryOklch.c + 0.02, 0.35),
+    const darkPrimaryHex = oklchToHex({
+        l: Math.min(primaryOklch.l + 0.08, 0.82),
+        c: Math.min(primaryOklch.c + 0.02, 0.33),
+        h: primaryOklch.h,
     });
-    const darkPrimaryForeground = enforceMinContrast(darkBackground, darkPrimary, 4.5);
-
-    const darkSecondaryOklch = hexToOklch(darkBg);
-    const darkSecondary = oklchToHex({ ...darkSecondaryOklch, l: 0.2, c: 0.02 });
-    const darkSecondaryForeground = darkForeground;
-    const darkMuted = oklchToHex({ ...darkSecondaryOklch, l: 0.18, c: 0.015 });
-    const darkMutedForeground = enforceMinContrast(
-        oklchToHex({ l: 0.65, c: 0.03, h: primaryOklch.h }), darkMuted, 4.5
+    const darkPrimaryForegroundHex = enforceMinContrast(
+        oklchToHex({ l: 0.1, c: 0.01, h: primaryOklch.h }),
+        darkPrimaryHex, 4.5
     );
 
-    const darkAccentOklch = hexToOklch(palette.accent);
-    const darkAccent = oklchToHex({ ...darkAccentOklch, l: 0.22, c: Math.min(darkAccentOklch.c, 0.06) });
-    const darkAccentForeground = darkForeground;
-    const darkDestructive = oklchToHex({ l: 0.45, c: 0.22, h: 25 });
-    const darkDestructiveForeground = enforceMinContrast("#ffffff", darkDestructive, 4.5);
+    const darkSecondaryHex = oklchToHex({ l: 0.22, c: 0.04, h: secondaryOklch.h });
+    const darkSecondaryForegroundHex = enforceMinContrast(
+        oklchToHex({ l: 0.85, c: 0.03, h: secondaryOklch.h }),
+        darkSecondaryHex, 4.5
+    );
 
-    const darkBorderOklch = hexToOklch(darkBg);
-    const darkBorder = oklchToHex({ ...darkBorderOklch, l: darkBorderOklch.l + 0.12, c: 0.02 });
-    const darkInput = oklchToHex({ ...darkBorderOklch, l: darkBorderOklch.l + 0.08, c: 0.015 });
-    const darkRing = darkPrimary;
+    const darkMutedHex = oklchToHex({ l: 0.20, c: 0.01, h: primaryOklch.h });
+    const darkMutedForegroundHex = enforceMinContrast(
+        oklchToHex({ l: 0.65, c: 0.02, h: primaryOklch.h }),
+        darkMutedHex, 4.5
+    );
 
-    // Return oklch() CSS strings — matches base-nova variable format
+    const darkAccentHex = oklchToHex({ l: 0.24, c: 0.05, h: accentOklch.h });
+    const darkAccentForegroundHex = enforceMinContrast(
+        oklchToHex({ l: 0.88, c: 0.03, h: accentOklch.h }),
+        darkAccentHex, 4.5
+    );
+
+    const darkDestructiveHex = oklchToHex({ l: 0.50, c: 0.22, h: 25 });
+    const darkDestructiveForegroundHex = enforceMinContrast("#ffffff", darkDestructiveHex, 4.5);
+
+    const darkBorderHex = oklchToHex({ l: darkBgOklch.l + 0.14, c: 0.015, h: primaryOklch.h });
+    const darkInputHex = oklchToHex({ l: darkBgOklch.l + 0.10, c: 0.01, h: primaryOklch.h });
+    const darkRingHex = darkPrimaryHex;
+
+    const radius = `${radiusPx}px`;
+
     return {
-        background: hexToOklchCss(background),
-        foreground: hexToOklchCss(foreground),
-        card: hexToOklchCss(card),
-        cardForeground: hexToOklchCss(cardForeground),
-        popover: hexToOklchCss(popover),
-        popoverForeground: hexToOklchCss(popoverForeground),
-        primary: hexToOklchCss(primary),
-        primaryForeground: hexToOklchCss(primaryForeground),
-        secondary: hexToOklchCss(secondary),
-        secondaryForeground: hexToOklchCss(secondaryForeground),
-        muted: hexToOklchCss(muted),
-        mutedForeground: hexToOklchCss(mutedForeground),
-        accent: hexToOklchCss(accent),
-        accentForeground: hexToOklchCss(accentForeground),
-        destructive: hexToOklchCss(destructive),
-        destructiveForeground: hexToOklchCss(destructiveForeground),
-        border: hexToOklchCss(border),
-        input: hexToOklchCss(input),
-        ring: hexToOklchCss(ring),
-        radius: `${radiusPx}px`,
-        darkBackground: hexToOklchCss(darkBackground),
-        darkForeground: hexToOklchCss(darkForeground),
-        darkCard: hexToOklchCss(darkCard),
-        darkCardForeground: hexToOklchCss(darkCardForeground),
-        darkPopover: hexToOklchCss(darkPopover),
-        darkPopoverForeground: hexToOklchCss(darkPopoverForeground),
-        darkPrimary: hexToOklchCss(darkPrimary),
-        darkPrimaryForeground: hexToOklchCss(darkPrimaryForeground),
-        darkSecondary: hexToOklchCss(darkSecondary),
-        darkSecondaryForeground: hexToOklchCss(darkSecondaryForeground),
-        darkMuted: hexToOklchCss(darkMuted),
-        darkMutedForeground: hexToOklchCss(darkMutedForeground),
-        darkAccent: hexToOklchCss(darkAccent),
-        darkAccentForeground: hexToOklchCss(darkAccentForeground),
-        darkDestructive: hexToOklchCss(darkDestructive),
-        darkDestructiveForeground: hexToOklchCss(darkDestructiveForeground),
-        darkBorder: hexToOklchCss(darkBorder),
-        darkInput: hexToOklchCss(darkInput),
-        darkRing: hexToOklchCss(darkRing),
+        background: hexToOklchCss(backgroundHex),
+        foreground: hexToOklchCss(foregroundHex),
+        card: hexToOklchCss(cardHex),
+        cardForeground: hexToOklchCss(cardForegroundHex),
+        popover: hexToOklchCss(popoverHex),
+        popoverForeground: hexToOklchCss(popoverForegroundHex),
+        primary: hexToOklchCss(primaryHex),
+        primaryForeground: hexToOklchCss(primaryForegroundHex),
+        secondary: hexToOklchCss(secondaryHex),
+        secondaryForeground: hexToOklchCss(secondaryForegroundHex),
+        muted: hexToOklchCss(mutedHex),
+        mutedForeground: hexToOklchCss(mutedForegroundHex),
+        accent: hexToOklchCss(accentHex),
+        accentForeground: hexToOklchCss(accentForegroundHex),
+        destructive: hexToOklchCss(destructiveHex),
+        destructiveForeground: hexToOklchCss(destructiveForegroundHex),
+        border: hexToOklchCss(borderHex),
+        input: hexToOklchCss(inputHex),
+        ring: hexToOklchCss(ringHex),
+        radius,
+        darkBackground: hexToOklchCss(darkBgHex),
+        darkForeground: hexToOklchCss(darkForegroundHex),
+        darkCard: hexToOklchCss(darkCardHex),
+        darkCardForeground: hexToOklchCss(darkCardForegroundHex),
+        darkPopover: hexToOklchCss(darkPopoverHex),
+        darkPopoverForeground: hexToOklchCss(darkPopoverForegroundHex),
+        darkPrimary: hexToOklchCss(darkPrimaryHex),
+        darkPrimaryForeground: hexToOklchCss(darkPrimaryForegroundHex),
+        darkSecondary: hexToOklchCss(darkSecondaryHex),
+        darkSecondaryForeground: hexToOklchCss(darkSecondaryForegroundHex),
+        darkMuted: hexToOklchCss(darkMutedHex),
+        darkMutedForeground: hexToOklchCss(darkMutedForegroundHex),
+        darkAccent: hexToOklchCss(darkAccentHex),
+        darkAccentForeground: hexToOklchCss(darkAccentForegroundHex),
+        darkDestructive: hexToOklchCss(darkDestructiveHex),
+        darkDestructiveForeground: hexToOklchCss(darkDestructiveForegroundHex),
+        darkBorder: hexToOklchCss(darkBorderHex),
+        darkInput: hexToOklchCss(darkInputHex),
+        darkRing: hexToOklchCss(darkRingHex),
     };
 }
 </file>
@@ -1776,34 +3480,51 @@ import { immer } from "zustand/middleware/immer";
 import { nanoid } from "nanoid";
 import { generateHarmony } from "../harmony/engine";
 import { paletteToShadcnTokens } from "../harmony/tokens";
+import { applyIdeology, getIdeologyRadiusPx } from "../ideology/blend";
+import { getTopPairs } from "../typography/scorer";
+import { injectFontPair, applyFontPair } from "../typography/loader";
+import { pushThemeToUrl, readThemeFromUrl } from "./url-sync";
 import type { ThemeConfig, HarmonyType, ShadcnTokenSet } from "../schema/theme-config.schema";
+import type { FontPair } from "../typography/registry";
 
 const HARMONY_TYPES: HarmonyType[] = [
-    "analogous",
-    "complementary",
-    "split-comp",
-    "triadic",
-    "tetradic",
-    "monochromatic",
+    "analogous", "complementary", "split-comp",
+    "triadic", "tetradic", "monochromatic",
+];
+
+const IDEOLOGY_IDS = [
+    "default", "glassmorphism", "neobrutalism", "minimal",
+    "colorblocking", "bento", "softpastel", "darkeditorial",
+    "scifi", "claymorphism",
 ];
 
 function buildThemeConfig(
     primaryHex: string,
     harmonyType: HarmonyType,
-    radiusOverride: number | null = null
+    ideologyId: string,
+    ideologyTension: number,
+    fontPairId: string,
+    industryTag: string,
+    radiusOverride: number | null,
 ): ThemeConfig {
     const palette = generateHarmony(primaryHex, harmonyType);
-    const radiusPx = radiusOverride !== null ? radiusOverride : 8;
-    const tokens = paletteToShadcnTokens(palette, radiusPx);
+
+    // Use ideology radius if no manual override
+    const radiusPx = radiusOverride !== null
+        ? radiusOverride
+        : getIdeologyRadiusPx(ideologyId);
+
+    const baseTokens = paletteToShadcnTokens(palette, radiusPx);
+    const { tokens } = applyIdeology(baseTokens, ideologyId, ideologyTension);
 
     return {
         id: nanoid(),
         primaryHex,
         harmonyType,
-        ideologyId: "default",
-        ideologyTension: 0,
-        fontPairId: "default",
-        industryTag: "tech",
+        ideologyId,
+        ideologyTension,
+        fontPairId,
+        industryTag,
         radiusOverride,
         locks: {
             color: false,
@@ -1817,111 +3538,196 @@ function buildThemeConfig(
     };
 }
 
+export interface Favourite {
+    id: string;
+    config: ThemeConfig;
+    label: string;
+    savedAt: string;
+}
+
 interface ThemeStore {
     current: ThemeConfig;
     isDark: boolean;
     past: ThemeConfig[];
     future: ThemeConfig[];
+    favourites: Favourite[];
 
     // Actions
     setPrimaryHex: (hex: string) => void;
     setHarmonyType: (type: HarmonyType) => void;
+    setIdeologyId: (id: string) => void;
+    setIdeologyTension: (tension: number) => void;
+    setFontPairId: (id: string) => void;
+    setIndustryTag: (tag: string) => void;
     setRadiusOverride: (value: number | null) => void;
     toggleDark: () => void;
     toggleLock: (dimension: keyof ThemeConfig["locks"]) => void;
     randomizeUnlocked: () => void;
     undo: () => void;
     redo: () => void;
+    saveFavourite: (label?: string) => void;
+    removeFavourite: (id: string) => void;
+    restoreFavourite: (id: string) => void;
 }
 
 const SEED_COLOR = "#6d28d9";
 const SEED_HARMONY: HarmonyType = "analogous";
+const SEED_IDEOLOGY = "default";
+const SEED_INDUSTRY = "tech";
+const SEED_FONT = "dm-sans-inter";
+
+function pushHistory(past: ThemeConfig[], current: ThemeConfig): ThemeConfig[] {
+    const next = [...past, current];
+    if (next.length > 50) next.shift();
+    return next;
+}
+
+function loadFavourites(): Favourite[] {
+    if (typeof window === "undefined") return [];
+    try {
+        return JSON.parse(localStorage.getItem("aide-favourites") ?? "[]");
+    } catch { return []; }
+}
+
+function saveFavouritesToStorage(favs: Favourite[]) {
+    if (typeof window === "undefined") return;
+    try {
+        localStorage.setItem("aide-favourites", JSON.stringify(favs));
+    } catch { /* ignore */ }
+}
 
 export const useThemeStore = create<ThemeStore>()(
     immer((set, get) => ({
-        current: buildThemeConfig(SEED_COLOR, SEED_HARMONY),
+        current: (() => {
+            const fromUrl = readThemeFromUrl();
+            if (fromUrl?.primaryHex) {
+                return buildThemeConfig(
+                    fromUrl.primaryHex,
+                    (fromUrl.harmonyType as HarmonyType) ?? SEED_HARMONY,
+                    fromUrl.ideologyId ?? SEED_IDEOLOGY,
+                    fromUrl.ideologyTension ?? 1,
+                    fromUrl.fontPairId ?? SEED_FONT,
+                    fromUrl.industryTag ?? SEED_INDUSTRY,
+                    fromUrl.radiusOverride ?? null,
+                );
+            }
+            return buildThemeConfig(SEED_COLOR, SEED_HARMONY, SEED_IDEOLOGY, 1, SEED_FONT, SEED_INDUSTRY, null);
+        })(),
         isDark: false,
         past: [],
         future: [],
+        favourites: loadFavourites(),
 
-        setPrimaryHex: (hex: string) => {
+        setPrimaryHex: (hex) => {
             if (!/^#[0-9A-Fa-f]{6}$/.test(hex)) return;
             set((state) => {
-                state.past.push(state.current);
-                if (state.past.length > 50) state.past.shift();
+                state.past = pushHistory(state.past, state.current);
                 state.future = [];
-                state.current = buildThemeConfig(
-                    hex,
-                    state.current.harmonyType,
-                    state.current.radiusOverride
-                );
+                const { harmonyType, ideologyId, ideologyTension, fontPairId, industryTag, radiusOverride } = state.current;
+                state.current = buildThemeConfig(hex, harmonyType, ideologyId, ideologyTension, fontPairId, industryTag, radiusOverride);
+                state.current.locks = get().current.locks;
+                pushThemeToUrl(state.current);
             });
         },
 
-        setHarmonyType: (type: HarmonyType) => {
+        setHarmonyType: (type) => {
             set((state) => {
-                state.past.push(state.current);
-                if (state.past.length > 50) state.past.shift();
+                state.past = pushHistory(state.past, state.current);
                 state.future = [];
-                state.current = buildThemeConfig(
-                    state.current.primaryHex,
-                    type,
-                    state.current.radiusOverride
-                );
-                state.current.harmonyType = type;
+                const { primaryHex, ideologyId, ideologyTension, fontPairId, industryTag, radiusOverride } = state.current;
+                state.current = buildThemeConfig(primaryHex, type, ideologyId, ideologyTension, fontPairId, industryTag, radiusOverride);
+                state.current.locks = get().current.locks;
+                pushThemeToUrl(state.current);
             });
         },
 
-        setRadiusOverride: (value: number | null) => {
+        setIdeologyId: (id) => {
             set((state) => {
-                state.past.push(state.current);
-                if (state.past.length > 50) state.past.shift();
+                state.past = pushHistory(state.past, state.current);
                 state.future = [];
-                state.current = buildThemeConfig(
-                    state.current.primaryHex,
-                    state.current.harmonyType,
-                    value
-                );
-                state.current.radiusOverride = value;
+                const { primaryHex, harmonyType, ideologyTension, fontPairId, industryTag, radiusOverride } = state.current;
+                state.current = buildThemeConfig(primaryHex, harmonyType, id, ideologyTension, fontPairId, industryTag, radiusOverride);
+                state.current.locks = get().current.locks;
+                pushThemeToUrl(state.current);
+            });
+        },
+
+        setIdeologyTension: (tension) => {
+            set((state) => {
+                const { primaryHex, harmonyType, ideologyId, fontPairId, industryTag, radiusOverride } = state.current;
+                state.current = buildThemeConfig(primaryHex, harmonyType, ideologyId, tension, fontPairId, industryTag, radiusOverride);
+                state.current.locks = get().current.locks;
+                pushThemeToUrl(state.current);
+            });
+        },
+
+        setFontPairId: (id) => {
+            set((state) => {
+                state.current.fontPairId = id;
+                pushThemeToUrl(state.current);
+            });
+        },
+
+        setIndustryTag: (tag) => {
+            set((state) => {
+                state.current.industryTag = tag;
+                // Auto-select best font pair for new tag
+                const top = getTopPairs(tag, state.current.ideologyId, 1);
+                if (top[0]) state.current.fontPairId = top[0].id;
+                pushThemeToUrl(state.current);
+            });
+        },
+
+        setRadiusOverride: (value) => {
+            set((state) => {
+                state.past = pushHistory(state.past, state.current);
+                state.future = [];
+                const { primaryHex, harmonyType, ideologyId, ideologyTension, fontPairId, industryTag } = state.current;
+                state.current = buildThemeConfig(primaryHex, harmonyType, ideologyId, ideologyTension, fontPairId, industryTag, value);
+                state.current.locks = get().current.locks;
+                pushThemeToUrl(state.current);
             });
         },
 
         toggleDark: () => {
-            set((state) => {
-                state.isDark = !state.isDark;
-            });
+            set((state) => { state.isDark = !state.isDark; });
         },
 
         toggleLock: (dimension) => {
             set((state) => {
                 state.current.locks[dimension] = !state.current.locks[dimension];
+                pushThemeToUrl(state.current);
             });
         },
 
         randomizeUnlocked: () => {
             set((state) => {
-                const { locks, primaryHex, harmonyType, radiusOverride } = state.current;
+                const { locks, primaryHex, harmonyType, ideologyId, fontPairId, industryTag, radiusOverride, ideologyTension } = state.current;
 
-                const newHex = locks.color
-                    ? primaryHex
-                    : "#" +
-                    Math.floor(Math.random() * 0xffffff)
-                        .toString(16)
-                        .padStart(6, "0");
+                const newHex = locks.color ? primaryHex
+                    : "#" + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, "0");
 
-                const newHarmony = locks.harmony
-                    ? harmonyType
+                const newHarmony = locks.harmony ? harmonyType
                     : HARMONY_TYPES[Math.floor(Math.random() * HARMONY_TYPES.length)];
 
-                const newRadius = locks.radius
-                    ? radiusOverride
-                    : Math.floor(Math.random() * 20);
+                const newIdeology = locks.ideology ? ideologyId
+                    : IDEOLOGY_IDS[Math.floor(Math.random() * IDEOLOGY_IDS.length)];
 
-                state.past.push(state.current);
-                if (state.past.length > 50) state.past.shift();
+                const newRadius = locks.radius ? radiusOverride : null;
+
+                const newFontId = locks.fonts ? fontPairId : (() => {
+                    const top = getTopPairs(industryTag, newIdeology, 3);
+                    return top[Math.floor(Math.random() * top.length)]?.id ?? fontPairId;
+                })();
+
+                state.past = pushHistory(state.past, state.current);
                 state.future = [];
-                state.current = buildThemeConfig(newHex, newHarmony, newRadius);
-                state.current.locks = locks; // preserve locks after randomize
+                state.current = buildThemeConfig(
+                    newHex, newHarmony, newIdeology,
+                    ideologyTension, newFontId, industryTag, newRadius
+                );
+                state.current.locks = locks;
+                pushThemeToUrl(state.current);
             });
         },
 
@@ -1940,370 +3746,38 @@ export const useThemeStore = create<ThemeStore>()(
                 state.current = state.future.shift()!;
             });
         },
+
+        saveFavourite: (label) => {
+            set((state) => {
+                const fav: Favourite = {
+                    id: nanoid(),
+                    config: state.current,
+                    label: label ?? `Theme ${state.favourites.length + 1}`,
+                    savedAt: new Date().toISOString(),
+                };
+                state.favourites.push(fav);
+                saveFavouritesToStorage(state.favourites);
+            });
+        },
+
+        removeFavourite: (id) => {
+            set((state) => {
+                state.favourites = state.favourites.filter((f) => f.id !== id);
+                saveFavouritesToStorage(state.favourites);
+            });
+        },
+
+        restoreFavourite: (id) => {
+            set((state) => {
+                const fav = state.favourites.find((f) => f.id === id);
+                if (!fav) return;
+                state.past = pushHistory(state.past, state.current);
+                state.future = [];
+                state.current = fav.config;
+            });
+        },
     }))
 );
-</file>
-
-<file path=".gitignore">
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-</file>
-
-<file path="AGENTS.md">
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
-
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
-</file>
-
-<file path="CLAUDE.md">
-@AGENTS.md
-</file>
-
-<file path="components.json">
-{
-  "$schema": "https://ui.shadcn.com/schema.json",
-  "style": "base-nova",
-  "rsc": true,
-  "tsx": true,
-  "tailwind": {
-    "config": "",
-    "css": "src/app/globals.css",
-    "baseColor": "neutral",
-    "cssVariables": true,
-    "prefix": ""
-  },
-  "iconLibrary": "lucide",
-  "rtl": false,
-  "aliases": {
-    "components": "@/components",
-    "utils": "@/lib/utils",
-    "ui": "@/components/ui",
-    "lib": "@/lib",
-    "hooks": "@/hooks"
-  },
-  "menuColor": "default",
-  "menuAccent": "subtle",
-  "registries": {}
-}
-</file>
-
-<file path="eslint.config.mjs">
-import { defineConfig, globalIgnores } from "eslint/config";
-import nextVitals from "eslint-config-next/core-web-vitals";
-import nextTs from "eslint-config-next/typescript";
-
-const eslintConfig = defineConfig([
-  ...nextVitals,
-  ...nextTs,
-  // Override default ignores of eslint-config-next.
-  globalIgnores([
-    // Default ignores of eslint-config-next:
-    ".next/**",
-    "out/**",
-    "build/**",
-    "next-env.d.ts",
-  ]),
-]);
-
-export default eslintConfig;
-</file>
-
-<file path="next.config.ts">
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  /* config options here */
-};
-
-export default nextConfig;
-</file>
-
-<file path="postcss.config.mjs">
-const config = {
-  plugins: {
-    "@tailwindcss/postcss": {},
-  },
-};
-
-export default config;
-</file>
-
-<file path="public/file.svg">
-<svg fill="none" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M14.5 13.5V5.41a1 1 0 0 0-.3-.7L9.8.29A1 1 0 0 0 9.08 0H1.5v13.5A2.5 2.5 0 0 0 4 16h8a2.5 2.5 0 0 0 2.5-2.5m-1.5 0v-7H8v-5H3v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1M9.5 5V2.12L12.38 5zM5.13 5h-.62v1.25h2.12V5zm-.62 3h7.12v1.25H4.5zm.62 3h-.62v1.25h7.12V11z" clip-rule="evenodd" fill="#666" fill-rule="evenodd"/></svg>
-</file>
-
-<file path="public/globe.svg">
-<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><g clip-path="url(#a)"><path fill-rule="evenodd" clip-rule="evenodd" d="M10.27 14.1a6.5 6.5 0 0 0 3.67-3.45q-1.24.21-2.7.34-.31 1.83-.97 3.1M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m.48-1.52a7 7 0 0 1-.96 0H7.5a4 4 0 0 1-.84-1.32q-.38-.89-.63-2.08a40 40 0 0 0 3.92 0q-.25 1.2-.63 2.08a4 4 0 0 1-.84 1.31zm2.94-4.76q1.66-.15 2.95-.43a7 7 0 0 0 0-2.58q-1.3-.27-2.95-.43a18 18 0 0 1 0 3.44m-1.27-3.54a17 17 0 0 1 0 3.64 39 39 0 0 1-4.3 0 17 17 0 0 1 0-3.64 39 39 0 0 1 4.3 0m1.1-1.17q1.45.13 2.69.34a6.5 6.5 0 0 0-3.67-3.44q.65 1.26.98 3.1M8.48 1.5l.01.02q.41.37.84 1.31.38.89.63 2.08a40 40 0 0 0-3.92 0q.25-1.2.63-2.08a4 4 0 0 1 .85-1.32 7 7 0 0 1 .96 0m-2.75.4a6.5 6.5 0 0 0-3.67 3.44 29 29 0 0 1 2.7-.34q.31-1.83.97-3.1M4.58 6.28q-1.66.16-2.95.43a7 7 0 0 0 0 2.58q1.3.27 2.95.43a18 18 0 0 1 0-3.44m.17 4.71q-1.45-.12-2.69-.34a6.5 6.5 0 0 0 3.67 3.44q-.65-1.27-.98-3.1" fill="#666"/></g><defs><clipPath id="a"><path fill="#fff" d="M0 0h16v16H0z"/></clipPath></defs></svg>
-</file>
-
-<file path="public/next.svg">
-<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 394 80"><path fill="#000" d="M262 0h68.5v12.7h-27.2v66.6h-13.6V12.7H262V0ZM149 0v12.7H94v20.4h44.3v12.6H94v21h55v12.6H80.5V0h68.7zm34.3 0h-17.8l63.8 79.4h17.9l-32-39.7 32-39.6h-17.9l-23 28.6-23-28.6zm18.3 56.7-9-11-27.1 33.7h17.8l18.3-22.7z"/><path fill="#000" d="M81 79.3 17 0H0v79.3h13.6V17l50.2 62.3H81Zm252.6-.4c-1 0-1.8-.4-2.5-1s-1.1-1.6-1.1-2.6.3-1.8 1-2.5 1.6-1 2.6-1 1.8.3 2.5 1a3.4 3.4 0 0 1 .6 4.3 3.7 3.7 0 0 1-3 1.8zm23.2-33.5h6v23.3c0 2.1-.4 4-1.3 5.5a9.1 9.1 0 0 1-3.8 3.5c-1.6.8-3.5 1.3-5.7 1.3-2 0-3.7-.4-5.3-1s-2.8-1.8-3.7-3.2c-.9-1.3-1.4-3-1.4-5h6c.1.8.3 1.6.7 2.2s1 1.2 1.6 1.5c.7.4 1.5.5 2.4.5 1 0 1.8-.2 2.4-.6a4 4 0 0 0 1.6-1.8c.3-.8.5-1.8.5-3V45.5zm30.9 9.1a4.4 4.4 0 0 0-2-3.3 7.5 7.5 0 0 0-4.3-1.1c-1.3 0-2.4.2-3.3.5-.9.4-1.6 1-2 1.6a3.5 3.5 0 0 0-.3 4c.3.5.7.9 1.3 1.2l1.8 1 2 .5 3.2.8c1.3.3 2.5.7 3.7 1.2a13 13 0 0 1 3.2 1.8 8.1 8.1 0 0 1 3 6.5c0 2-.5 3.7-1.5 5.1a10 10 0 0 1-4.4 3.5c-1.8.8-4.1 1.2-6.8 1.2-2.6 0-4.9-.4-6.8-1.2-2-.8-3.4-2-4.5-3.5a10 10 0 0 1-1.7-5.6h6a5 5 0 0 0 3.5 4.6c1 .4 2.2.6 3.4.6 1.3 0 2.5-.2 3.5-.6 1-.4 1.8-1 2.4-1.7a4 4 0 0 0 .8-2.4c0-.9-.2-1.6-.7-2.2a11 11 0 0 0-2.1-1.4l-3.2-1-3.8-1c-2.8-.7-5-1.7-6.6-3.2a7.2 7.2 0 0 1-2.4-5.7 8 8 0 0 1 1.7-5 10 10 0 0 1 4.3-3.5c2-.8 4-1.2 6.4-1.2 2.3 0 4.4.4 6.2 1.2 1.8.8 3.2 2 4.3 3.4 1 1.4 1.5 3 1.5 5h-5.8z"/></svg>
-</file>
-
-<file path="public/vercel.svg">
-<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1155 1000"><path d="m577.3 0 577.4 1000H0z" fill="#fff"/></svg>
-</file>
-
-<file path="public/window.svg">
-<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" clip-rule="evenodd" d="M1.5 2.5h13v10a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1zM0 1h16v11.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 0 12.5zm3.75 4.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5M7 4.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0m1.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5" fill="#666"/></svg>
-</file>
-
-<file path="README.md">
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
-
-## Getting Started
-
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-</file>
-
-<file path="src/app/layout.tsx">
-import type { Metadata } from "next";
-import { Geist } from "next/font/google";
-import "./globals.css";
-import { ThemeProvider } from "@/components/preview/ThemeProvider";
-
-const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
-
-export const metadata: Metadata = {
-  title: "AI Design Engineer",
-  description: "Generate complete design systems from a single color",
-};
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={geist.variable}>
-        <ThemeProvider>{children}</ThemeProvider>
-      </body>
-    </html>
-  );
-}
-</file>
-
-<file path="src/app/page.tsx">
-"use client";
-
-import { ColorInput } from "@/components/studio/ColorInput";
-import { HarmonyPicker } from "@/components/studio/HarmonyPicker";
-import { TokenDisplay } from "@/components/studio/TokenDisplay";
-import { PreviewCanvas } from "@/components/preview/PreviewCanvas";
-import { useThemeStore } from "@/lib/store/theme.store";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { Undo2, Redo2, Shuffle } from "lucide-react";
-
-export default function Home() {
-  const undo = useThemeStore((s) => s.undo);
-  const redo = useThemeStore((s) => s.redo);
-  const randomizeUnlocked = useThemeStore((s) => s.randomizeUnlocked);
-  const past = useThemeStore((s) => s.past);
-  const future = useThemeStore((s) => s.future);
-
-  return (
-    <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
-      {/* ── Left panel: Studio controls ── */}
-      <aside className="flex w-80 shrink-0 flex-col border-r border-border bg-card">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <div>
-            <h1 className="text-sm font-bold tracking-tight">
-              AI Design Engineer
-            </h1>
-            <p className="text-xs text-muted-foreground">
-              Design system generator
-            </p>
-          </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={undo}
-              disabled={past.length === 0}
-              title="Undo (Cmd+Z)"
-            >
-              <Undo2 className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={redo}
-              disabled={future.length === 0}
-              title="Redo (Cmd+Shift+Z)"
-            >
-              <Redo2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Controls */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
-          <ColorInput />
-          <Separator />
-          <HarmonyPicker />
-          <Separator />
-          <TokenDisplay />
-        </div>
-
-        {/* Footer: Randomize */}
-        <div className="border-t border-border p-4">
-          <Button
-            className="w-full gap-2"
-            onClick={randomizeUnlocked}
-          >
-            <Shuffle className="h-4 w-4" />
-            Randomize Unlocked
-          </Button>
-        </div>
-      </aside>
-
-      {/* ── Right panel: Preview canvas ── */}
-      <main className="flex-1 overflow-hidden">
-        <PreviewCanvas />
-      </main>
-    </div>
-  );
-}
-</file>
-
-<file path="src/components/ui/button.tsx">
-"use client"
-
-import { Button as ButtonPrimitive } from "@base-ui/react/button"
-import { cva, type VariantProps } from "class-variance-authority"
-
-import { cn } from "@/lib/utils"
-
-const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-  {
-    variants: {
-      variant: {
-        default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
-        outline:
-          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
-        secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
-        ghost:
-          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
-        destructive:
-          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
-        link: "text-primary underline-offset-4 hover:underline",
-      },
-      size: {
-        default:
-          "h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-        xs: "h-6 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-7 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
-        lg: "h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-        icon: "size-8",
-        "icon-xs":
-          "size-6 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm":
-          "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
-        "icon-lg": "size-9",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
-  }
-)
-
-function Button({
-  className,
-  variant = "default",
-  size = "default",
-  ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
-  return (
-    <ButtonPrimitive
-      data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
-      {...props}
-    />
-  )
-}
-
-export { Button, buttonVariants }
 </file>
 
 <file path="src/lib/utils.ts">
@@ -2349,6 +3823,136 @@ export function cn(...inputs: ClassValue[]) {
     "**/*.mts"
   ],
   "exclude": ["node_modules"]
+}
+</file>
+
+<file path="src/app/layout.tsx">
+import type { Metadata } from "next";
+import { Geist } from "next/font/google";
+import "./globals.css";
+import { ThemeProvider } from "@/components/preview/ThemeProvider";
+
+const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
+
+export const metadata: Metadata = {
+  title: "AI Design Engineer",
+  description: "Generate complete design systems from a single color",
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body className={geist.variable}>
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
+    </html>
+  );
+}
+</file>
+
+<file path="src/app/page.tsx">
+"use client";
+
+import { ColorInput } from "@/components/studio/ColorInput";
+import { HarmonyPicker } from "@/components/studio/HarmonyPicker";
+import { IdeologyPicker } from "@/components/studio/IdeologyPicker";
+import { TypographyPicker } from "@/components/studio/TypographyPicker";
+import { RadiusSlider } from "@/components/studio/RadiusSlider";
+import { TokenDisplay } from "@/components/studio/TokenDisplay";
+import { FavouritesPanel } from "@/components/studio/FavouritesPanel";
+import { PreviewCanvas } from "@/components/preview/PreviewCanvas";
+import { useThemeStore } from "@/lib/store/theme.store";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { Undo2, Redo2, Shuffle } from "lucide-react";
+
+export default function Home() {
+  const undo = useThemeStore((s) => s.undo);
+  const redo = useThemeStore((s) => s.redo);
+  const randomizeUnlocked = useThemeStore((s) => s.randomizeUnlocked);
+  const past = useThemeStore((s) => s.past);
+  const future = useThemeStore((s) => s.future);
+
+  useKeyboardShortcuts();
+
+  return (
+    <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
+      {/* ── Left panel: Studio controls ── */}
+      <aside className="flex w-80 shrink-0 flex-col border-r border-border bg-card">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <div>
+            <h1 className="text-sm font-bold tracking-tight">
+              AI Design Engineer
+            </h1>
+            <p className="text-xs text-muted-foreground">
+              Design system generator
+            </p>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={undo}
+              disabled={past.length === 0}
+              title="Undo (Cmd+Z)"
+            >
+              <Undo2 className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={redo}
+              disabled={future.length === 0}
+              title="Redo (Cmd+Shift+Z)"
+            >
+              <Redo2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Controls - reordered */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
+          <FavouritesPanel />
+          <Separator />
+          <ColorInput />
+          <Separator />
+          <HarmonyPicker />
+          <Separator />
+          <TypographyPicker />
+          <Separator />
+          <IdeologyPicker />
+          <Separator />
+          <RadiusSlider />
+          <Separator />
+          <TokenDisplay />
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-border p-4 space-y-2">
+          <Button className="w-full gap-2" onClick={randomizeUnlocked}>
+            <Shuffle className="h-4 w-4" />
+            Randomize Unlocked
+          </Button>
+          <p className="text-center text-xs text-muted-foreground">
+            Cmd+Enter to randomize · Cmd+Z to undo
+          </p>
+        </div>
+      </aside>
+
+      {/* ── Right panel: Preview canvas ── */}
+      <main className="flex-1 overflow-hidden">
+        <PreviewCanvas />
+      </main>
+    </div>
+  );
 }
 </file>
 
@@ -2446,6 +4050,10 @@ export function cn(...inputs: ClassValue[]) {
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
   --radius: 0.625rem;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
 .dark {
