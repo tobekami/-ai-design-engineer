@@ -6,6 +6,7 @@ import { extractColorsFromUrl, type ExtractedColor } from "@/lib/extract/url";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronDown, Globe, Check, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 const SOURCE_LABELS: Record<string, string> = {
     "theme-color": "theme-color",
@@ -37,13 +38,14 @@ export function UrlExtract() {
                 setError("No brand colors found on this page. Try uploading their logo instead.");
             } else {
                 setResults(colors);
+                toast.success(`Found ${colors.length} color${colors.length > 1 ? "s" : ""} — click to apply`);
             }
         } catch (err) {
-            setError(
-                err instanceof Error
-                    ? err.message
-                    : "Could not fetch URL. The site may block external requests."
-            );
+            const msg = err instanceof Error
+                ? err.message
+                : "Could not fetch URL. The site may block external requests.";
+            setError(msg);
+            toast.error(msg);
         } finally {
             setLoading(false);
         }
@@ -52,6 +54,7 @@ export function UrlExtract() {
     const handleSelect = (hex: string) => {
         setSelected(hex);
         setPrimaryHex(hex);
+        toast.success(`Color applied — ${hex}`);
     };
 
     return (

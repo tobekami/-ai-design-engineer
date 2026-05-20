@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/preview/ThemeProvider";
+import { Toaster } from "sonner";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
 
@@ -19,6 +20,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={geist.variable}>
         <ThemeProvider>{children}</ThemeProvider>
+        <Toaster position="bottom-right" richColors closeButton />
       </body>
     </html>
   );

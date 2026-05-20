@@ -5,6 +5,7 @@ import { useThemeStore } from "@/lib/store/theme.store";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Heart, Trash2, RotateCcw } from "lucide-react";
+import { toast } from "sonner";
 
 export function FavouritesPanel() {
     const favourites = useThemeStore((s) => s.favourites);
@@ -26,7 +27,7 @@ export function FavouritesPanel() {
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7"
-                        onClick={() => saveFavourite()}
+                        onClick={() => { saveFavourite(); toast.success("Theme saved to favourites"); }}
                         title="Save current theme"
                     >
                         <Heart className="h-3.5 w-3.5 text-muted-foreground" />
@@ -76,7 +77,7 @@ export function FavouritesPanel() {
                                     variant="ghost"
                                     size="icon"
                                     className="h-6 w-6"
-                                    onClick={() => restoreFavourite(fav.id)}
+                                    onClick={() => { restoreFavourite(fav.id); toast.success("Theme applied"); }}
                                     title="Restore"
                                 >
                                     <RotateCcw className="h-3 w-3" />
@@ -85,7 +86,7 @@ export function FavouritesPanel() {
                                     variant="ghost"
                                     size="icon"
                                     className="h-6 w-6"
-                                    onClick={() => removeFavourite(fav.id)}
+                                    onClick={() => { removeFavourite(fav.id); toast("Removed from favourites"); }}
                                     title="Remove"
                                 >
                                     <Trash2 className="h-3 w-3 text-destructive" />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useThemeStore } from "@/lib/store/theme.store";
 import { useApiKey, AI_PROVIDERS, AI_MODELS } from "@/hooks/useApiKey";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { downloadCSS, exportAsCSS } from "@/lib/export/css";
 import { downloadJSON } from "@/lib/export/json";
 import { downloadTailwind } from "@/lib/export/tailwind";
 import { generateMarkdownGuide, downloadMarkdown } from "@/lib/export/markdown";
+import { toast } from "sonner";
 import {
     ChevronDown,
     Copy,
@@ -20,9 +21,17 @@ import {
     Sparkles,
     Eye,
     EyeOff,
-    Check,
 } from "lucide-react";
 
+function useCyclingDots(active: boolean) {
+    const [dots, setDots] = useState(".");
+    useEffect(() => {
+        if (!active) { setDots("."); return; }
+        const id = setInterval(() => setDots((d) => (d.length >= 3 ? "." : d + ".")), 500);
+        return () => clearInterval(id);
+    }, [active]);
+    return dots;
+}
 
 export function ExportPanel() {
     type MdState = "idle" | "loading" | "done" | "error";
@@ -31,35 +40,59 @@ export function ExportPanel() {
 
     const [open, setOpen] = useState(true);
     const [showKey, setShowKey] = useState(false);
-    const [copied, setCopied] = useState(false);
     const [mdState, setMdState] = useState<MdState>("idle");
     const [mdContent, setMdContent] = useState("");
-    const [mdError, setMdError] = useState("");
 
+    const dots = useCyclingDots(mdState === "loading");
 
     const handleCopyCSS = () => {
         navigator.clipboard.writeText(exportAsCSS(current));
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        toast.success("CSS variables copied to clipboard");
+    };
+
+    const handleDownloadCSS = () => {
+        downloadCSS(current);
+        toast.success("Downloading theme.css");
+    };
+
+    const handleDownloadJSON = () => {
+        downloadJSON(current);
+        toast.success("Downloading theme.json");
+    };
+
+    const handleDownloadTailwind = () => {
+        downloadTailwind(current);
+        toast.success("Downloading tailwind.theme.ts");
     };
 
     const handleGenerateMd = async () => {
         if (!hasKey) return;
         setMdState("loading");
-        setMdError("");
+        const toastId = toast.loading("AI is writing your design guide…");
         try {
             const content = await generateMarkdownGuide(current, apiKey, selectedModel);
             setMdContent(content);
             setMdState("done");
+            toast.success(`Design guide ready — ${Math.round(content.length / 1000)}k chars`, { id: toastId });
         } catch (err) {
-            setMdError(err instanceof Error ? err.message : "Unknown error");
             setMdState("error");
+            const msg = err instanceof Error ? err.message : "Unknown error";
+            toast.error(msg, { id: toastId });
         }
+    };
+
+    const handleCopyMd = () => {
+        navigator.clipboard.writeText(mdContent);
+        toast.success("Design guide copied to clipboard");
+    };
+
+    const handleDownloadMd = () => {
+        downloadMarkdown(mdContent, current.primaryHex);
+        toast.success("Downloading design-system.md");
     };
 
     return (
         <div className="space-y-3">
-            {/* Header */}
             <button
                 onClick={() => setOpen(!open)}
                 className="flex items-center gap-1.5"
@@ -68,8 +101,7 @@ export function ExportPanel() {
                     Export
                 </span>
                 <ChevronDown
-                    className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${open ? "rotate-0" : "-rotate-90"
-                        }`}
+                    className={`h-3 w-3 text-muted-foreground transition-transform duration-200 ${open ? "rotate-0" : "-rotate-90"}`}
                 />
             </button>
 
@@ -77,29 +109,13 @@ export function ExportPanel() {
                 <div className="space-y-4">
                     {/* CSS export */}
                     <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">
-                            CSS Variables
-                        </Label>
+                        <Label className="text-xs text-muted-foreground">CSS Variables</Label>
                         <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="flex-1 gap-1.5"
-                                onClick={handleCopyCSS}
-                            >
-                                {copied ? (
-                                    <Check className="h-3.5 w-3.5" />
-                                ) : (
-                                    <Copy className="h-3.5 w-3.5" />
-                                )}
-                                {copied ? "Copied" : "Copy CSS"}
+                            <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={handleCopyCSS}>
+                                <Copy className="h-3.5 w-3.5" />
+                                Copy CSS
                             </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="flex-1 gap-1.5"
-                                onClick={() => downloadCSS(current)}
-                            >
+                            <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={handleDownloadCSS}>
                                 <Download className="h-3.5 w-3.5" />
                                 theme.css
                             </Button>
@@ -108,15 +124,8 @@ export function ExportPanel() {
 
                     {/* JSON export */}
                     <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">
-                            Theme JSON
-                        </Label>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full gap-1.5"
-                            onClick={() => downloadJSON(current)}
-                        >
+                        <Label className="text-xs text-muted-foreground">Theme JSON</Label>
+                        <Button variant="outline" size="sm" className="w-full gap-1.5" onClick={handleDownloadJSON}>
                             <FileJson className="h-3.5 w-3.5" />
                             Download theme.json
                         </Button>
@@ -124,28 +133,19 @@ export function ExportPanel() {
 
                     {/* Tailwind export */}
                     <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">
-                            Tailwind Config
-                        </Label>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full gap-1.5"
-                            onClick={() => downloadTailwind(current)}
-                        >
+                        <Label className="text-xs text-muted-foreground">Tailwind Config</Label>
+                        <Button variant="outline" size="sm" className="w-full gap-1.5" onClick={handleDownloadTailwind}>
                             <FileCode className="h-3.5 w-3.5" />
                             Download tailwind.theme.ts
                         </Button>
                     </div>
 
-                    {/* Divider */}
                     <div className="h-px bg-border" />
 
-                    {/* Markdown guide — needs API key */}
+                    {/* AI Design Guide */}
                     <div className="space-y-2">
                         <Label className="text-xs text-muted-foreground">AI Design Guide</Label>
 
-                        {/* Model selector */}
                         <div className="space-y-1.5">
                             <Label className="text-xs text-muted-foreground">Model</Label>
                             <select
@@ -156,16 +156,13 @@ export function ExportPanel() {
                                 {AI_PROVIDERS.map((provider) => (
                                     <optgroup key={provider.id} label={provider.label}>
                                         {AI_MODELS.filter((m) => m.provider === provider.id).map((model) => (
-                                            <option key={model.id} value={model.id}>
-                                                {model.label}
-                                            </option>
+                                            <option key={model.id} value={model.id}>{model.label}</option>
                                         ))}
                                     </optgroup>
                                 ))}
                             </select>
                         </div>
 
-                        {/* API key input */}
                         <div className="space-y-1.5">
                             <Label className="text-xs text-muted-foreground">
                                 {AI_PROVIDERS.find((p) => p.id === selectedModel.provider)?.label} API Key
@@ -173,9 +170,7 @@ export function ExportPanel() {
                             <div className="relative">
                                 <Input
                                     type={showKey ? "text" : "password"}
-                                    placeholder={
-                                        AI_PROVIDERS.find((p) => p.id === selectedModel.provider)?.keyPlaceholder ?? "API key..."
-                                    }
+                                    placeholder={AI_PROVIDERS.find((p) => p.id === selectedModel.provider)?.keyPlaceholder ?? "API key…"}
                                     value={apiKey}
                                     onChange={(e) => setApiKey(e.target.value)}
                                     className="font-mono text-xs pr-8"
@@ -187,42 +182,38 @@ export function ExportPanel() {
                                     {showKey ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                                 </button>
                             </div>
-                            <p className="text-xs text-muted-foreground">
-                                Stored locally. Never sent to our servers.
-                            </p>
+                            <p className="text-xs text-muted-foreground">Stored locally. Never sent to our servers.</p>
                         </div>
 
-                        {/* Generate button */}
+                        {/* Generate button — animated while loading */}
                         <Button
                             variant="outline"
                             size="sm"
-                            className="w-full gap-1.5"
+                            className="w-full gap-1.5 relative overflow-hidden"
                             onClick={handleGenerateMd}
                             disabled={!hasKey || mdState === "loading"}
                         >
-                            <Sparkles className="h-3.5 w-3.5" />
-                            {mdState === "loading" ? "Generating..." : "Generate Design Guide"}
+                            <Sparkles className={`h-3.5 w-3.5 ${mdState === "loading" ? "animate-spin" : ""}`} />
+                            {mdState === "loading" ? `Generating${dots}` : "Generate Design Guide"}
+                            {mdState === "loading" && (
+                                <span
+                                    className="pointer-events-none absolute inset-0 -skew-x-12"
+                                    style={{
+                                        background: "linear-gradient(90deg, transparent 0%, oklch(1 0 0 / 12%) 50%, transparent 100%)",
+                                        animation: "shimmer 1.4s ease-in-out infinite",
+                                    }}
+                                />
+                            )}
                         </Button>
 
-                        {mdState === "error" && (
-                            <p className="text-xs text-destructive">{mdError}</p>
-                        )}
-
                         {mdState === "done" && mdContent && (
-                            <div className="space-y-1.5">
-                                <p className="text-xs text-muted-foreground">
-                                    ✓ Guide generated ({Math.round(mdContent.length / 1000)}k chars)
-                                </p>
-                                <div className="flex gap-2">
-                                    <Button variant="outline" size="sm" className="flex-1 gap-1.5"
-                                        onClick={() => { navigator.clipboard.writeText(mdContent); }}>
-                                        <Copy className="h-3.5 w-3.5" />Copy
-                                    </Button>
-                                    <Button variant="outline" size="sm" className="flex-1 gap-1.5"
-                                        onClick={() => downloadMarkdown(mdContent, current.primaryHex)}>
-                                        <FileText className="h-3.5 w-3.5" />Download
-                                    </Button>
-                                </div>
+                            <div className="flex gap-2">
+                                <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={handleCopyMd}>
+                                    <Copy className="h-3.5 w-3.5" />Copy
+                                </Button>
+                                <Button variant="outline" size="sm" className="flex-1 gap-1.5" onClick={handleDownloadMd}>
+                                    <FileText className="h-3.5 w-3.5" />Download
+                                </Button>
                             </div>
                         )}
                     </div>
